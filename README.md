@@ -2,9 +2,7 @@
 
 NixOS Hyprland workstation flake.
 
-![Demo](assets/demo.gif)
-
-<!-- Drag ~/Videos/0xNix-demo.mp4 into this spot in the GitHub web editor for the full-quality video. -->
+![Demo](assets/demo.webp)
 
 ## Screenshots
 
@@ -12,12 +10,10 @@ NixOS Hyprland workstation flake.
 |---|---|
 | ![Desktop](assets/01-desktop.png) | ![Tiled windows](assets/02-tiled.png) |
 | Desktop | fastfetch, genact and two config files in vim |
-| ![Launcher](assets/03-launcher.png) | ![Files overlay](assets/04-files.png) |
-| Fuzzel launcher | lf file manager overlay |
-| ![Keybinds](assets/05-keybinds.png) | ![btop overlay](assets/06-btop.png) |
-| Keybind cheatsheet (Super + /) | btop overlay (Ctrl + Shift + Esc) |
-| ![Wallpaper switcher](assets/07-wallpapers.png) | |
-| Wallpaper switcher (Super + Shift + W) | |
+| ![Launcher](assets/03-launcher.png) | ![Keybinds](assets/05-keybinds.png) |
+| Fuzzel launcher | Keybind cheatsheet (Super + /) |
+| ![btop overlay](assets/06-btop.png) | ![Wallpaper switcher](assets/07-wallpapers.png) |
+| btop overlay (Ctrl + Shift + Esc) | Wallpaper switcher (Super + Shift + W) |
 
 Waybar tooltips for CPU, RAM and disk:
 
