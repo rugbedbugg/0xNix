@@ -1,33 +1,27 @@
 # 0xNix
 
-NixOS Hyprland workstation flake.
+TTY-themed NixOS Hyprland workstation flake
 
 ![Demo](assets/demo.webp)
 
 ## Screenshots
 
-| | |
+| Bare Desktop | General Desktop view |
 |---|---|
-| ![Desktop](assets/01-desktop.png) | ![Tiled windows](assets/02-tiled.png) |
-| Desktop | fastfetch, genact and two config files in vim |
-| ![Launcher](assets/03-launcher.png) | ![Keybinds](assets/05-keybinds.png) |
+| ![Desktop](assets/01-desktop.png) | ![Tiled windows](assets/02-tiled.png) |  
+
 | Fuzzel launcher | Keybind cheatsheet (Super + /) |
-| ![btop overlay](assets/06-btop.png) | ![Wallpaper switcher](assets/07-wallpapers.png) |
+|---|---|
+| ![Launcher](assets/03-launcher.png) | ![Keybinds](assets/05-keybinds.png) |  
+
 | btop overlay (Ctrl + Shift + Esc) | Wallpaper switcher (Super + Shift + W) |
+|---|---|
+| ![btop overlay](assets/06-btop.png) | ![Wallpaper switcher](assets/07-wallpapers.png) |
+
 
 Waybar tooltips for CPU, RAM and disk:
 
 ![Waybar tooltips](assets/waybar-tooltips.png)
-
-## About
-
-Declarative configuration for the ASUS Vivobook Go E1404FA and user `rugbedbugg`,
-based on the installed NixOS 26.05 revision. Builds and checks are complete;
-the tested Hyprland desktop and Home Manager are permanently installed as
-generation 2, the boot default. Generation 1 remains available for rollback.
-Protected Arch/EFI files and firmware boot variables matched after switching;
-reboot and dual-boot testing remain pending. The original hardware module and
-audit snapshots are preserved.
 
 ## Use it on your machine
 
