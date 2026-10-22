@@ -90,13 +90,12 @@ the normal explicit `direnv allow` trust decision.
 | Key | Action |
 |---|---|
 | Super + Enter | Foot terminal |
-| Super + D | Fuzzel application launcher |
 | Super + B | Firefox |
 | Super + Q | Close focused window |
 | Super + V | Toggle floating |
 | Super + arrows | Focus adjacent window |
 | Super + 1…0 | Select workspace 1…10 |
-| Super + Shift + 1…0 | Move window to workspace |
+| Super + Alt + 1…0 | Move window to workspace |
 | Super + left/right mouse drag | Move/resize floating window |
 | Super + Shift + L | Lock session |
 | Super + Shift + E | End the UWSM session |
@@ -112,7 +111,13 @@ More bindings, using the plain desktop tools
 | Super + Shift + arrows | Move window |
 | Super + L, Super + Alt + L | Lock session |
 | Ctrl + Alt + Delete | Session menu: lock, logout, suspend, reboot, shutdown |
+| Super + / | Keybind cheatsheet |
 | Super + N | Show the last dismissed notification |
+| Super + M | Toggle the rmpc music overlay |
+| Super + D | Toggle the Discord (Vesktop) overlay |
+| Super + S | Toggle the scratch terminal overlay |
+| Ctrl + Shift + Esc | Toggle the btop overlay |
+| Super + Shift + W | Wallpaper switcher |
 | Ctrl + Alt + C | Dismiss all notifications |
 | Print | Screenshot the screen to the clipboard and `~/Pictures/Screenshots` |
 | Super + Shift + S, Super + Shift + Alt + S | Screenshot a region |
