@@ -1,4 +1,9 @@
-{ pkgs, pkgs-unstable, vars, ... }:
+{
+  pkgs,
+  pkgs-unstable,
+  vars,
+  ...
+}:
 {
   imports = [
     ./shell.nix

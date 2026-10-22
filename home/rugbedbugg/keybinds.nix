@@ -95,7 +95,12 @@ let
   # taking it, so the script waits for the window to map (up to 10s — a
   # cold Vesktop start is slow) and focuses it by address. It re-checks the
   # workspace is still shown first, so hiding it again mid-wait isn't undone.
-  mkSpecialToggle = { class, workspace, launchCmd }:
+  mkSpecialToggle =
+    {
+      class,
+      workspace,
+      launchCmd,
+    }:
     pkgs.writeShellScript "toggle-special-${workspace}" ''
       hyprctl=${pkgs.hyprland}/bin/hyprctl
       jq=${pkgs.jq}/bin/jq

@@ -35,25 +35,27 @@ let
   # waybar(5)) instead of a toggle that could drift out of sync — and the
   # main bar keeps its default SIGUSR2-reload behaviour, which home-manager
   # relies on when reloading waybar.service.
-  specialBarConfig = pkgs.writeText "waybar-special-config.json" (builtins.toJSON {
-    layer = "top";
-    position = "top";
-    height = 28;
-    margin-top = 41;
-    margin-left = 150;
-    margin-right = 1370;
-    exclusive = false;
-    passthrough = true;
-    start_hidden = true;
-    on-sigusr1 = "show";
-    on-sigusr2 = "hide";
-    modules-left = [ "hyprland/workspaces" ];
-    "hyprland/workspaces" = {
-      format = "{name}";
-      show-special = true;
-      ignore-workspaces = [ "(?!special:).*" ];
-    };
-  });
+  specialBarConfig = pkgs.writeText "waybar-special-config.json" (
+    builtins.toJSON {
+      layer = "top";
+      position = "top";
+      height = 28;
+      margin-top = 41;
+      margin-left = 150;
+      margin-right = 1370;
+      exclusive = false;
+      passthrough = true;
+      start_hidden = true;
+      on-sigusr1 = "show";
+      on-sigusr2 = "hide";
+      modules-left = [ "hyprland/workspaces" ];
+      "hyprland/workspaces" = {
+        format = "{name}";
+        show-special = true;
+        ignore-workspaces = [ "(?!special:).*" ];
+      };
+    }
+  );
 
   # Same look as the main bar's workspace buttons (reverse video for the
   # shown one). The background and border sit on #workspaces, which sizes
@@ -110,7 +112,15 @@ let
   # keeps the previous byte counters in shell variables for the live
   # down/up rates.
   networkStatus = pkgs.writeShellScript "waybar-network" ''
-    export PATH=${pkgs.lib.makeBinPath [ pkgs.networkmanager pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnugrep ]}
+    export PATH=${
+      pkgs.lib.makeBinPath [
+        pkgs.networkmanager
+        pkgs.jq
+        pkgs.coreutils
+        pkgs.gawk
+        pkgs.gnugrep
+      ]
+    }
 
     rate() {
       awk -v b="$1" 'BEGIN {
@@ -201,7 +211,14 @@ let
   # power_supply uevent on every battery or adapter change. Only a change
   # in the adapter's online state shows a toast.
   powerWatcher = pkgs.writeShellScript "power-watcher" ''
-    export PATH=${pkgs.lib.makeBinPath [ pkgs.systemd pkgs.libnotify pkgs.coreutils pkgs.gnugrep ]}
+    export PATH=${
+      pkgs.lib.makeBinPath [
+        pkgs.systemd
+        pkgs.libnotify
+        pkgs.coreutils
+        pkgs.gnugrep
+      ]
+    }
 
     ac=
     for s in /sys/class/power_supply/*; do
@@ -482,8 +499,14 @@ in
         # broke that loop by dropping this watcher (so the bar never showed).
         # On shutdown it couldn't break it, so `uwsm stop` failed and
         # reboot/poweroff/logout hung (both confirmed in the journal).
-        After = [ "waybar-special.service" "graphical-session.target" ];
-        PartOf = [ "waybar-special.service" "graphical-session.target" ];
+        After = [
+          "waybar-special.service"
+          "graphical-session.target"
+        ];
+        PartOf = [
+          "waybar-special.service"
+          "graphical-session.target"
+        ];
       };
       Service = {
         ExecStart = "${specialBarWatcher}";
