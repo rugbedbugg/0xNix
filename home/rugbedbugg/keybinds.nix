@@ -3,9 +3,11 @@
   lib,
   pkgs,
   pkgs-unstable,
+  vars,
   ...
 }:
 let
+  geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
   app = cmd: "${pkgs.uwsm}/bin/uwsm app -- ${cmd}";
   notify = "${pkgs.mako}/bin/makoctl";
   media = "${pkgs.playerctl}/bin/playerctl";
@@ -193,20 +195,16 @@ in
       hl.window_rule({ name = "discord-special-ws", match = { class = "^vesktop$" }, workspace = "special:discord silent" })
 
       -- Floating, centered, fuzzel-styled overlays for every special
-      -- workspace, Vesktop included. 1616x909
-      -- is exactly 16:9 (101 * 16:9) and covers 70.8% of the 1920x1080
-      -- screen. The position is pinned rather than left to Hyprland's
-      -- centering: 909 is odd, so centering in the 1048px-tall work area
-      -- below the bar would land on a half pixel. 152 = (1920 - 1616) / 2,
-      -- 101 = 32px bar + 69. The special-workspace label bar in
-      -- desktop-tools.nix is positioned from these numbers.
+      -- workspace, Vesktop included. Size and position come from
+      -- overlay-geometry.nix, which also places the special-workspace
+      -- label bar in desktop-tools.nix.
       for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop"}) do
         hl.window_rule({
           name = "float-style-" .. cls,
           match = { class = "^" .. cls .. "$" },
           float = true,
-          size = "1616 909",
-          move = "152 101",
+          size = "${toString geometry.width} ${toString geometry.height}",
+          move = "${toString geometry.x} ${toString geometry.y}",
           rounding = 0,
           border_size = 2,
           border_color = "rgba(ffffffee)",

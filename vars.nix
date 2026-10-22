@@ -9,4 +9,11 @@
   # Public commit author name. The email and signing key come from the
   # untracked ~/.config/git/identity file.
   gitName = "rugbedbugg";
+  # Logical resolution of the main display, after scaling. The floating
+  # overlays and the special-workspace bar are laid out from it in pixels
+  # (home/rugbedbugg/overlay-geometry.nix).
+  screen = {
+    width = 1920;
+    height = 1080;
+  };
 }

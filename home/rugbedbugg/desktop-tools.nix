@@ -2,25 +2,19 @@
   config,
   osConfig,
   pkgs,
+  vars,
   ...
 }:
 let
+  geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
+
   # Special-workspace bar: a second, separate waybar process that sits on
   # the top-left corner of the floating special-workspace terminals
-  # (keybinds.nix). Those windows are pinned at (152, 101), size 1616x909,
-  # and Hyprland draws their 2px border *outside* that box — so the frame's
-  # outer top-left corner is (150, 99). This 28px-tall bar occupies y 73-101
-  # starting at x 150: its left edge is flush with the window border, and
-  # its own 2px bottom border lands on the window's top border rows.
-  #
-  # Geometry, both confirmed by measuring the layer surface live:
-  # - margin-top counts from below the main bar's 32px exclusive zone, not
-  #   from the screen edge, so 73 - 32 = 41.
-  # - No `width`: with position=top, an explicit width makes waybar drop the
-  #   left/right anchors (bar.cpp setPosition), which centers the bar and
-  #   silently ignores margin-left. Anchored on both sides instead, the
-  #   margins set the box: 150 from the left, 1920 - 150 - 400 = 1370 from
-  #   the right, for a 400px-wide bar.
+  # (keybinds.nix). overlay-geometry.nix computes its margins from the same
+  # screen size as those windows. Measuring the layer surface live
+  # confirmed both waybar quirks it relies on: margin-top counts from below
+  # the main bar, and an explicit width drops the side anchors
+  # (bar.cpp setPosition).
   #
   # Content: waybar's own hyprland/workspaces module with show-special on
   # and every non-special workspace ignored — so it lists every special
@@ -39,10 +33,10 @@ let
     builtins.toJSON {
       layer = "top";
       position = "top";
-      height = 28;
-      margin-top = 41;
-      margin-left = 150;
-      margin-right = 1370;
+      inherit (geometry.label) height;
+      margin-top = geometry.label.marginTop;
+      margin-left = geometry.label.marginLeft;
+      margin-right = geometry.label.marginRight;
       exclusive = false;
       passthrough = true;
       start_hidden = true;
@@ -248,6 +242,12 @@ let
           else
             notify-send -a power "On battery" "Battery $(capacity)%"
           fi
+        done
+
+    # udevadm only exits if udev goes away. Exit non-zero so the service
+    # restarts.
+    exit 1
+  '';
 
   # GPU load for the main bar. The DRM card index depends on probe order.
   # simpledrm can claim card0 at boot and push the real GPU to card1. Read
@@ -259,12 +259,6 @@ let
         exec ${pkgs.coreutils}/bin/cat "$f"
       fi
     done
-  '';
-        done
-
-    # udevadm only exits if udev goes away. Exit non-zero so the service
-    # restarts.
-    exit 1
   '';
 in
 {

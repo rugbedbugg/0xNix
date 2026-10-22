@@ -25,7 +25,7 @@ Waybar tooltips for CPU, RAM and disk:
 
 ## Use it on your machine
 
-1. Edit [`vars.nix`](vars.nix). It holds the username, hostname, login display name and commit author name. Every module reads these values from there.
+1. Edit [`vars.nix`](vars.nix). It holds the username, hostname, login display name, commit author name and screen resolution. Every module reads these values from there.
 2. Replace `hosts/nixos/hardware-configuration.nix` with your own:
 
    ```sh
