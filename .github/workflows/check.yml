@@ -1,0 +1,21 @@
+# Evaluate every flake output and check formatting. Building the full
+# system is too heavy for a hosted runner, so this stops at evaluation.
+# That still runs the configuration-safety assertions in checks/.
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      # Skip the generated hardware file. checks/ pins its exact bytes.
+      - name: Check formatting
+        run: nix fmt -- --check $(git ls-files '*.nix' ':!hosts/nixos/hardware-configuration.nix')
+      - name: Evaluate the flake
+        run: nix flake check --no-build
