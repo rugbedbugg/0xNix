@@ -248,6 +248,18 @@ let
           else
             notify-send -a power "On battery" "Battery $(capacity)%"
           fi
+
+  # GPU load for the main bar. The DRM card index depends on probe order.
+  # simpledrm can claim card0 at boot and push the real GPU to card1. Read
+  # the first card that reports a busy percentage instead of a fixed index.
+  # Print nothing when no card reports one so waybar hides the module.
+  gpuBusy = pkgs.writeShellScript "waybar-gpu" ''
+    for f in /sys/class/drm/card*/device/gpu_busy_percent; do
+      if [ -r "$f" ]; then
+        exec ${pkgs.coreutils}/bin/cat "$f"
+      fi
+    done
+  '';
         done
 
     # udevadm only exits if udev goes away. Exit non-zero so the service
@@ -357,7 +369,7 @@ in
           interval = 30;
         };
         "custom/gpu" = {
-          exec = "${pkgs.coreutils}/bin/cat /sys/class/drm/card1/device/gpu_busy_percent";
+          exec = "${gpuBusy}";
           format = "GPU {}%";
           interval = 2;
         };
