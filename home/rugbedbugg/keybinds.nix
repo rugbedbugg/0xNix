@@ -108,7 +108,19 @@ let
   '';
 
   # Menu and confirmation share the window's 20x11 cells.
+  #
+  # Draw only after Hyprland has mapped the window. foot garbles anything
+  # written before then for about half a second: "Shutdown" and the OK row
+  # land at the bottom of an empty window. dialog draws once and then
+  # waits for a key, so nothing repaints the screen until that delay ends.
+  # The wait takes about 35ms. Give up after 2s and draw anyway.
   sessionDialog = pkgs.writeShellScript "session-dialog" ''
+    for _ in $(${pkgs.coreutils}/bin/seq 100); do
+      mapped=$(${pkgs.hyprland}/bin/hyprctl clients -j \
+        | ${pkgs.jq}/bin/jq '[.[] | select(.class == "session-menu" and .mapped)] | length')
+      [ "''${mapped:-0}" -gt 0 ] && break
+      ${pkgs.coreutils}/bin/sleep 0.02
+    done
     export DIALOGRC=${sessionRc}
     dialog() {
       ${pkgs.dialog}/bin/dialog --no-lines "$@"
