@@ -68,16 +68,71 @@ let
     ' | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "Keys: " --width 72 --lines 20 >/dev/null
   '';
 
-  session = pkgs.writeShellScript "session-menu" ''
-    choice=$(${pkgs.coreutils}/bin/printf '%s\n' Lock Logout Suspend Reboot Shutdown \
-      | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "Session: ") || exit 0
+  # Ctrl + Alt + Delete session menu: dialog(1) in a small floating foot
+  # window. dialog has no free-text input, so the menu can only return one
+  # of its five entries. Arrow keys move the selection and Enter runs it.
+  # Esc closes the window. Logout, Reboot and Shutdown ask first and default
+  # to No. dialog draws no lines of its own, so the window rule's border is
+  # the only frame. Its colors follow the bar: white on the terminal's
+  # background, reverse video for the selection. With --no-lines dialog
+  # still paints its borders as blank cells in the border colors, so those
+  # need the plain background too.
+  sessionRc = pkgs.writeText "session-dialogrc" ''
+    use_shadow = OFF
+    use_colors = ON
+    screen_color = (WHITE,BLACK,OFF)
+    shadow_color = (BLACK,BLACK,OFF)
+    dialog_color = (WHITE,BLACK,OFF)
+    title_color = (WHITE,BLACK,ON)
+    border_color = (WHITE,BLACK,OFF)
+    border2_color = (WHITE,BLACK,OFF)
+    menubox_color = (WHITE,BLACK,OFF)
+    menubox_border_color = (WHITE,BLACK,OFF)
+    menubox_border2_color = (WHITE,BLACK,OFF)
+    position_indicator_color = (WHITE,BLACK,OFF)
+    uarrow_color = (WHITE,BLACK,OFF)
+    darrow_color = (WHITE,BLACK,OFF)
+    itemhelp_color = (WHITE,BLACK,OFF)
+    item_color = (WHITE,BLACK,OFF)
+    item_selected_color = (BLACK,WHITE,OFF)
+    tag_color = (WHITE,BLACK,OFF)
+    tag_selected_color = (BLACK,WHITE,OFF)
+    tag_key_color = (WHITE,BLACK,OFF)
+    tag_key_selected_color = (BLACK,WHITE,OFF)
+    button_active_color = (BLACK,WHITE,OFF)
+    button_inactive_color = (WHITE,BLACK,OFF)
+    button_key_active_color = (BLACK,WHITE,OFF)
+    button_key_inactive_color = (WHITE,BLACK,OFF)
+    button_label_active_color = (BLACK,WHITE,OFF)
+    button_label_inactive_color = (WHITE,BLACK,OFF)
+  '';
+
+  # Menu and confirmation share the window's 20x11 cells.
+  sessionDialog = pkgs.writeShellScript "session-dialog" ''
+    export DIALOGRC=${sessionRc}
+    dialog() {
+      ${pkgs.dialog}/bin/dialog --no-lines "$@"
+    }
+    confirm() {
+      dialog --defaultno --title "$1" --yesno "$1 now?" 11 20
+    }
+    choice=$(dialog --no-items --nocancel --stdout --title "Session" \
+      --menu "" 11 20 5 Lock Logout Suspend Reboot Shutdown) || exit 0
     case "$choice" in
       Lock) ${pkgs.systemd}/bin/loginctl lock-session ;;
-      Logout) ${pkgs.uwsm}/bin/uwsm stop ;;
+      Logout) confirm Logout && ${pkgs.uwsm}/bin/uwsm stop ;;
       Suspend) ${pkgs.systemd}/bin/systemctl suspend ;;
-      Reboot) ${pkgs.systemd}/bin/systemctl reboot ;;
-      Shutdown) ${pkgs.systemd}/bin/systemctl poweroff ;;
+      Reboot) confirm Reboot && ${pkgs.systemd}/bin/systemctl reboot ;;
+      Shutdown) confirm Shutdown && ${pkgs.systemd}/bin/systemctl poweroff ;;
     esac
+  '';
+
+  # A second press closes an open menu instead of stacking another one.
+  session = pkgs.writeShellScript "session-menu" ''
+    if ${pkgs.procps}/bin/pkill -f -- '--app-id=session-menu '; then
+      exit 0
+    fi
+    ${app (footAs "session-menu" "--window-size-chars=20x11 ${sessionDialog}")}
   '';
 
   # Special-workspace toggle: if a window with the given
@@ -210,6 +265,20 @@ in
           border_color = "rgba(ffffffee)",
         })
       end
+
+      -- Session menu: centered over a dimmed desktop. Keep focus on it until
+      -- it closes so a stray click can't strand it behind another window.
+      hl.window_rule({
+        name = "session-menu",
+        match = { class = "^session-menu$" },
+        float = true,
+        center = true,
+        stay_focused = true,
+        dim_around = true,
+        rounding = 0,
+        border_size = 2,
+        border_color = "rgba(ffffffee)",
+      })
 
       hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd("${toggleLauncher}"), { release = true, description = "App launcher" })
       hl.bind("SUPER + slash", hl.dsp.exec_cmd("${cheatsheet}"), { description = "This keybind list" })

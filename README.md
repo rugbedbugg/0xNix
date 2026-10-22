@@ -18,6 +18,10 @@ TTY-themed NixOS Hyprland workstation flake
 |---|---|
 | ![btop overlay](assets/06-btop.png) | ![Wallpaper switcher](assets/07-wallpapers.png) |
 
+| Session menu (Ctrl + Alt + Delete) |
+|---|
+| ![Session menu](assets/08-session.png) |
+
 
 Waybar tooltips for CPU, RAM and disk:
 
@@ -107,17 +111,17 @@ More bindings, using the plain desktop tools
 |---|---|
 | Super (tap) | Fuzzel application launcher |
 | Super + T / W / C | Foot / Firefox / vim in Foot |
-| Super + E | Toggle the lf file manager overlay |
-| Super + Shift + arrows | Move window |
-| Super + L, Super + Alt + L | Lock session |
-| Ctrl + Alt + Delete | Session menu: lock, logout, suspend, reboot, shutdown |
 | Super + / | Keybind cheatsheet |
-| Super + N | Show the last dismissed notification |
+| Super + E | Toggle the lf file manager overlay |
 | Super + M | Toggle the rmpc music overlay |
 | Super + D | Toggle the Discord (Vesktop) overlay |
 | Super + S | Toggle the scratch terminal overlay |
 | Ctrl + Shift + Esc | Toggle the btop overlay |
 | Super + Shift + W | Wallpaper switcher |
+| Super + Shift + arrows | Move window |
+| Super + L, Super + Alt + L | Lock session |
+| Ctrl + Alt + Delete | Session menu: lock, logout, suspend, reboot, shutdown. Logout, reboot and shutdown ask first. |
+| Super + N | Show the last dismissed notification |
 | Ctrl + Alt + C | Dismiss all notifications |
 | Print | Screenshot the screen to the clipboard and `~/Pictures/Screenshots` |
 | Super + Shift + S, Super + Shift + Alt + S | Screenshot a region |
