@@ -52,6 +52,9 @@ apps = pkgsUnstable.buildEnv {
           paths = with pkgsUnstable; [
             vesktop
             awscli2
+            # `aws ssm start-session` hands the session to this binary, so it
+            # updates together with the CLI.
+            ssm-session-manager-plugin
             firefox
             google-chrome
             microsoft-edge
