@@ -72,6 +72,12 @@
             codex
             opencode
             antigravity-cli
+            # Codex looks these up on PATH at runtime. It sandboxes commands
+            # with bwrap, its Codex Security MCP server runs on node and the
+            # Tableau plugin's startup hook builds a python3 venv.
+            bubblewrap
+            nodejs
+            python3
           ];
         };
         # Keybinds launch vesktop and firefox from ~/.nix-profile/bin, so they
