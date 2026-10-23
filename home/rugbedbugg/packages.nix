@@ -7,7 +7,11 @@
   #
   # Stable by default; anything that should track upstream closely goes in
   # the unstable list. Bump that with
-  # `nix flake lock --update-input nixpkgs-unstable`.
+  # `nix flake update nixpkgs-unstable`.
+  #
+  # Frequently updated packages are not here. They install into the user
+  # profile from the flake's `agents` and `apps` packages so they can update
+  # without a rebuild.
   home.packages =
     (with pkgs; [
       ripgrep
@@ -19,11 +23,5 @@
     ])
     ++ (with pkgs-unstable; [
       fastfetch
-      claude-code
-      codex
-      opencode
-      antigravity-cli
-      awscli2
-      vesktop
     ]);
 }

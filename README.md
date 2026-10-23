@@ -94,7 +94,7 @@ the normal explicit `direnv allow` trust decision.
 | Key | Action |
 |---|---|
 | Super + Enter | Foot terminal |
-| Super + B | Firefox |
+| Super + W | Firefox |
 | Super + Q | Close focused window |
 | Super + V | Toggle floating |
 | Super + arrows | Focus adjacent window |

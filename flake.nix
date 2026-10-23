@@ -60,6 +60,33 @@
       packages.${system} = {
         system = host.config.system.build.toplevel;
         home = host.config.home-manager.users.${vars.username}.home.activationPackage;
+        # Frequently updated packages live in the user profile instead of the
+        # system.
+        # Updating them then needs no sudo and no new system generation:
+        #   nix flake update nixpkgs-unstable --flake ~/0xNix
+        #   nix profile upgrade --all
+        # Install once with `nix profile add ~/0xNix#agents ~/0xNix#apps`.
+        agents = pkgsUnstable.buildEnv {
+          name = "agents";
+          paths = with pkgsUnstable; [
+            claude-code
+            codex
+            opencode
+            antigravity-cli
+          ];
+        };
+        # Keybinds launch vesktop and firefox from ~/.nix-profile/bin, so they
+        # need this installed.
+        apps = pkgsUnstable.buildEnv {
+          name = "apps";
+          paths = with pkgsUnstable; [
+            vesktop
+            awscli2
+            firefox
+            google-chrome
+            microsoft-edge
+          ];
+        };
       };
     };
 }

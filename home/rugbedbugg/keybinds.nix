@@ -9,6 +9,8 @@
 let
   geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
   app = cmd: "${pkgs.uwsm}/bin/uwsm app -- ${cmd}";
+  # Frequently updated packages installed with `nix profile`.
+  profileBin = "${config.home.homeDirectory}/.nix-profile/bin";
   notify = "${pkgs.mako}/bin/makoctl";
   media = "${pkgs.playerctl}/bin/playerctl";
 
@@ -232,13 +234,13 @@ let
     launchCmd = app (footAs "lf-special" "${config.programs.lf.package}/bin/lf");
   };
 
-  # Discord via Vesktop, from unstable for the latest release (packages.nix
-  # installs the same derivation). Its Wayland app-id is "vesktop",
+  # Discord via Vesktop, from the user profile (the flake's `apps` package)
+  # so it updates without a rebuild. Its Wayland app-id is "vesktop",
   # confirmed live. Gets the same floating overlay as the terminals below.
   toggleDiscord = mkSpecialToggle {
     class = "vesktop";
     workspace = "discord";
-    launchCmd = app "${pkgs-unstable.vesktop}/bin/vesktop";
+    launchCmd = app "${profileBin}/vesktop";
   };
 in
 {
@@ -316,7 +318,7 @@ in
       hl.bind("SUPER + SHIFT + M", hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, description = "Mute output" })
 
       hl.bind("SUPER + T", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot"}"), { description = "Terminal" })
-      hl.bind("SUPER + W", hl.dsp.exec_cmd("${app "${pkgs.firefox}/bin/firefox"}"), { description = "Browser" })
+      hl.bind("SUPER + W", hl.dsp.exec_cmd("${app "${profileBin}/firefox"}"), { description = "Browser" })
       hl.bind("SUPER + C", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot ${config.programs.vim.package}/bin/vim"}"), { description = "Editor (vim)" })
       hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("${app "${pkgs.pavucontrol}/bin/pavucontrol"}"), { description = "Volume mixer" })
 
