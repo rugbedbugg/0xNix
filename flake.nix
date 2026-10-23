@@ -40,6 +40,11 @@ agents = pkgsUnstable.buildEnv {
             codex
             opencode
             antigravity-cli
+            # Codex looks these up on PATH at runtime. It sandboxes commands
+            # with bwrap. Its plugins use Node.js and Python.
+            bubblewrap
+            nodejs
+            python3
           ];
         };
 apps = pkgsUnstable.buildEnv {
