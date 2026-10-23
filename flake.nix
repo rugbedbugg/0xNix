@@ -32,5 +32,26 @@
       };
       formatter.${system} = pkgs.nixfmt;
       devShells.${system} = import ./devshells { inherit pkgs; };
+      packages.${system} = {
+agents = pkgsUnstable.buildEnv {
+          name = "agents";
+          paths = with pkgsUnstable; [
+            claude-code
+            codex
+            opencode
+            antigravity-cli
+          ];
+        };
+apps = pkgsUnstable.buildEnv {
+          name = "apps";
+          paths = with pkgsUnstable; [
+            vesktop
+            awscli2
+            firefox
+            google-chrome
+            microsoft-edge
+          ];
+        };
+      };
     };
 }

@@ -273,7 +273,6 @@ in
     uni-vga
   ];
   programs = {
-    firefox.enable = true;
     foot = {
       enable = true;
       settings.main = {
