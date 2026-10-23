@@ -20,6 +20,8 @@
       htop
       tree
       genact
+      unzip
+      openssl
     ])
     ++ (with pkgs-unstable; [
       fastfetch
