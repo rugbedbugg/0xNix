@@ -4,6 +4,10 @@
   # connect through NAT traversal.
   services.tailscale.enable = true;
 
+  # The Arch install on the other partition is its own node, so each OS
+  # names itself instead of both claiming the oxide1-6 hostname.
+  services.tailscale.extraSetFlags = [ "--hostname=oxide1-6-nixos" ];
+
   # KDE Connect, reachable only from the paired phone (Redmi 13 5G) over
   # Tailscale, like the ufw rule on Arch. programs.kdeconnect would open
   # ports 1714-1764 on every interface instead.
