@@ -5,10 +5,9 @@
     # Exact revision used by the installed generation 1.
     nixpkgs.url = "github:NixOS/nixpkgs/26f4107e47e3ad0ffd0db220469ba83b6f6d96e8";
     # Deliberately NOT pinned/following the main nixpkgs: this is the escape
-    # hatch for daily-driver CLI tools (coding agents, system tools) that
-    # want to track upstream more closely than the rest of this stable
-    # system. Bump just this input with `nix flake lock --update-input
-    # nixpkgs-unstable` when you want newer versions of those tools.
+    # hatch for frequently updated packages that want to track upstream more
+    # closely than the rest of this stable system. Bump just this input with
+    # `nix flake update nixpkgs-unstable` when you want newer versions.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";

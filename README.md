@@ -71,8 +71,9 @@ nix --extra-experimental-features 'nix-command flakes' build .#system --out-link
 These commands write build results to the Nix store and a local result symlink.
 They do not change the active system, user configuration, bootloader or EFI files.
 The running configuration enables flakes. Use the explicit repository path for
-future rebuilds: `/etc/nixos/configuration.nix` remains the preserved original,
-and a bare `nixos-rebuild switch` would use that original configuration.
+future rebuilds. The original `/etc/nixos` files are retired to
+`/etc/nixos/retired-2026-10-21/`. A bare `nixos-rebuild switch` stops with an
+error that points back to the flake.
 The first permanent activation is complete; do not rerun its one-time helper.
 Future activations still require build/test validation and a check of any EFI writes.
 

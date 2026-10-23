@@ -8,8 +8,8 @@
     shellAbbrs = {
       ll = "ls -lah";
       gs = "git status";
-      # Plain `nixos-rebuild switch` falls back to /etc/nixos/configuration.nix
-      # and builds the stock system — always go through the flake.
+      # Plain `nixos-rebuild switch` reads /etc/nixos, which only holds a
+      # guard that stops the build. Always go through the flake.
       rebuild = "sudo nixos-rebuild switch --flake ~/0xNix#nixos";
     };
   };
