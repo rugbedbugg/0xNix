@@ -1,5 +1,8 @@
 
 add_newline = false
+# The sudo module runs `sudo -n true` per prompt. It can pass 500ms while
+# the network is switching.
+command_timeout = 1000
 continuation_prompt = "[▸▹ ](dimmed white)"
 
 format = """($nix_shell$container$git_metrics\n)$cmd_duration\
