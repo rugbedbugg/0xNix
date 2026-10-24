@@ -93,6 +93,7 @@
             firefox
             google-chrome
             microsoft-edge
+            zapfast
           ];
         };
       };
