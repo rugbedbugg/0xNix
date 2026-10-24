@@ -58,6 +58,7 @@ apps = pkgsUnstable.buildEnv {
             firefox
             google-chrome
             microsoft-edge
+            zapfast
           ];
         };
       };
