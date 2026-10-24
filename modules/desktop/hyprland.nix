@@ -35,4 +35,10 @@
   security.polkit.enable = true;
   # Installs ly-lock and its PAM service.
   programs.ly-lock.enable = true;
+
+  # ZapFast and other secret-keeping apps read their archive key from here.
+  # The ly PAM service unlocks the login keyring with the session password.
+  # Without a provider they get "The name is not activatable" on the session
+  # bus.
+  services.gnome.gnome-keyring.enable = true;
 }
