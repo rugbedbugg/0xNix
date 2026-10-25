@@ -22,6 +22,7 @@
       genact
       unzip
       openssl
+      libreoffice-fresh
     ])
     ++ (with pkgs-unstable; [
       fastfetch
