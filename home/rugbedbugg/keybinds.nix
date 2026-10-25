@@ -300,22 +300,18 @@ in
       hl.bind("SUPER + N", hl.dsp.exec_cmd("${notify} restore"), { description = "Restore last notification" })
       hl.bind("CTRL + ALT + C", hl.dsp.exec_cmd("${notify} dismiss --all"), { locked = true, description = "Clear notifications" })
       hl.bind("SUPER + L", hl.dsp.exec_cmd("${pkgs.systemd}/bin/loginctl lock-session"), { description = "Lock screen" })
-      hl.bind("SUPER + ALT + L", hl.dsp.exec_cmd("${pkgs.systemd}/bin/loginctl lock-session"), { description = "Lock screen" })
 
       hl.bind("Print", hl.dsp.exec_cmd("${screenshot}"), { description = "Screenshot" })
       hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("${screenshot} region"), { description = "Screenshot region" })
-      hl.bind("SUPER + SHIFT + ALT + S", hl.dsp.exec_cmd("${screenshot} region"), { description = "Screenshot region" })
 
-      hl.bind("CTRL + SUPER + Space", hl.dsp.exec_cmd("${media} play-pause"), { locked = true, description = "Play / pause" })
-      hl.bind("CTRL + SUPER + Equal", hl.dsp.exec_cmd("${media} next"), { locked = true, description = "Next track" })
-      hl.bind("CTRL + SUPER + Minus", hl.dsp.exec_cmd("${media} previous"), { locked = true, description = "Previous track" })
-      hl.bind("CTRL + SUPER + Backspace", hl.dsp.exec_cmd("${media} stop"), { locked = true, description = "Stop playback" })
+      -- Media actions ride on the hardware keys only. hyprland.nix binds the
+      -- volume keys the same way: one key per action, so the SUPER + / list
+      -- shows each action once. The play/pause key on standard keyboards
+      -- sends XF86AudioPlay.
       hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("${media} play-pause"), { locked = true, description = "Play / pause" })
-      hl.bind("XF86AudioPause", hl.dsp.exec_cmd("${media} play-pause"), { locked = true, description = "Play / pause" })
       hl.bind("XF86AudioNext", hl.dsp.exec_cmd("${media} next"), { locked = true, description = "Next track" })
       hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("${media} previous"), { locked = true, description = "Previous track" })
       hl.bind("XF86AudioStop", hl.dsp.exec_cmd("${media} stop"), { locked = true, description = "Stop playback" })
-      hl.bind("SUPER + SHIFT + M", hl.dsp.exec_cmd("${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, description = "Mute output" })
 
       hl.bind("SUPER + T", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot"}"), { description = "Terminal" })
       hl.bind("SUPER + W", hl.dsp.exec_cmd("${app "${profileBin}/firefox"}"), { description = "Browser" })
@@ -329,9 +325,9 @@ in
       hl.bind("SUPER + S", hl.dsp.exec_cmd("${toggleGeneral}"), { description = "Scratch terminal" })
       hl.bind("SUPER + E", hl.dsp.exec_cmd("${toggleFiles}"), { description = "Files (lf)" })
 
-      -- The bar is the only shell piece here; both restart shortcuts restart it.
+      -- The bar is the only shell piece here, so it gets a restart shortcut of
+      -- its own rather than riding on the session menu.
       hl.bind("CTRL + SUPER + SHIFT + R", hl.dsp.exec_cmd("${pkgs.systemd}/bin/systemctl --user restart waybar.service"), { release = true, description = "Restart bar" })
-      hl.bind("CTRL + SUPER + ALT + R", hl.dsp.exec_cmd("${pkgs.systemd}/bin/systemctl --user restart waybar.service"), { release = true, description = "Restart bar" })
       hl.bind("CTRL + SUPER + SHIFT + L", hl.dsp.exec_cmd("${pkgs.systemd}/bin/systemctl suspend"), { description = "Suspend" })
     '';
   };

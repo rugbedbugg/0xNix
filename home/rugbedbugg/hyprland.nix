@@ -63,10 +63,8 @@
     # (keybinds.nix) is built from `hyprctl binds -j`, and only lists binds
     # that have one.
     extraConfig = ''
-      hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("uwsm app -- ${pkgs.foot}/bin/foot"), { description = "Terminal" })
       hl.bind("SUPER + Q", hl.dsp.window.close(), { description = "Close window" })
       hl.bind("SUPER + V", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating" })
-      hl.bind("SUPER + SHIFT + L", hl.dsp.exec_cmd("loginctl lock-session"), { description = "Lock screen" })
       hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd("uwsm stop"), { description = "Log out" })
 
       for _, direction in ipairs({"left", "right", "up", "down"}) do
