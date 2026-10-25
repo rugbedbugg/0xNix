@@ -94,15 +94,13 @@ the normal explicit `direnv allow` trust decision.
 
 | Key | Action |
 |---|---|
-| Super + Enter | Foot terminal |
-| Super + W | Firefox |
+| Super + B | Microsoft Edge |
 | Super + Q | Close focused window |
 | Super + V | Toggle floating |
 | Super + arrows | Focus adjacent window |
 | Super + 1…0 | Select workspace 1…10 |
 | Super + Alt + 1…0 | Move window to workspace |
 | Super + left/right mouse drag | Move/resize floating window |
-| Super + Shift + L | Lock session |
 | Super + Shift + E | End the UWSM session |
 
 More bindings, using the plain desktop tools
@@ -111,30 +109,30 @@ More bindings, using the plain desktop tools
 | Key | Action |
 |---|---|
 | Super (tap) | Fuzzel application launcher |
-| Super + T / W / C | Foot / Firefox / vim in Foot |
+| Super + T / B / C / O | Foot / Edge / vim in Foot / LibreOffice |
 | Super + / | Keybind cheatsheet |
 | Super + E | Toggle the lf file manager overlay |
 | Super + M | Toggle the rmpc music overlay |
 | Super + D | Toggle the Discord (Vesktop) overlay |
+| Super + W | Toggle the WhatsApp (ZapFast) overlay |
 | Super + S | Toggle the scratch terminal overlay |
 | Ctrl + Shift + Esc | Toggle the btop overlay |
 | Super + Shift + W | Wallpaper switcher |
 | Super + Shift + arrows | Move window |
-| Super + L, Super + Alt + L | Lock session |
+| Super + L | Lock session |
 | Ctrl + Alt + Delete | Session menu: lock, logout, suspend, reboot, shutdown. Logout, reboot and shutdown ask first. |
 | Super + N | Show the last dismissed notification |
 | Ctrl + Alt + C | Dismiss all notifications |
 | Print | Screenshot the screen to the clipboard and `~/Pictures/Screenshots` |
-| Super + Shift + S, Super + Shift + Alt + S | Screenshot a region |
-| Ctrl + Super + Space / = / − / Backspace | Media play-pause / next / previous / stop |
-| Super + Shift + M | Mute output |
+| Super + Shift + S | Screenshot a region |
 | Ctrl + Alt + V | Pavucontrol |
-| Ctrl + Super + Shift + R, Ctrl + Super + Alt + R | Restart waybar |
+| Ctrl + Super + Shift + R | Restart waybar |
 | Ctrl + Super + Shift + L | Suspend |
 
-Volume, microphone mute and display brightness keys are configured. The session
-locks after ten idle minutes and requests a lock before suspend. Runtime checks,
-including successful unlock, are still required before treating this as verified.
+Volume, microphone mute, media and display brightness keys are configured. The
+session locks after ten idle minutes and requests a lock before suspend. Runtime
+checks, including successful unlock, are still required before treating this as
+verified.
 
 ## Updates
 
