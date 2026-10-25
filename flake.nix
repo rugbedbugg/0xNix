@@ -80,8 +80,8 @@
             python3
           ];
         };
-        # Keybinds launch vesktop and firefox from ~/.nix-profile/bin, so they
-        # need this installed.
+        # Keybinds launch vesktop and microsoft-edge from ~/.nix-profile/bin,
+        # so they need this installed.
         apps = pkgsUnstable.buildEnv {
           name = "apps";
           paths = with pkgsUnstable; [

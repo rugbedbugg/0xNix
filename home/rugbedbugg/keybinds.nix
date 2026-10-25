@@ -242,6 +242,18 @@ let
     workspace = "discord";
     launchCmd = app "${profileBin}/vesktop";
   };
+
+  # WhatsApp via ZapFast, also from the user profile. Its Wayland app-id is
+  # "zapfast", confirmed live with `hyprctl clients` when the keyring screen
+  # was up. Closing its window leaves the app in the system tray with no
+  # window of its own, so the toggle's "is it running" check finds nothing
+  # and launches it again. That second launch only asks the running instance
+  # to show its window, and the wait below still catches it once it maps.
+  toggleWhatsApp = mkSpecialToggle {
+    class = "zapfast";
+    workspace = "whatsapp";
+    launchCmd = app "${profileBin}/zapfast";
+  };
 in
 {
   # Desktop binds on top of hyprland.nix's core set, using the plain desktop
@@ -262,12 +274,13 @@ in
       hl.window_rule({ name = "general-special-ws", match = { class = "^general-special$" }, workspace = "special:general silent" })
       hl.window_rule({ name = "lf-special-ws", match = { class = "^lf-special$" }, workspace = "special:files silent" })
       hl.window_rule({ name = "discord-special-ws", match = { class = "^vesktop$" }, workspace = "special:discord silent" })
+      hl.window_rule({ name = "zapfast-special-ws", match = { class = "^zapfast$" }, workspace = "special:whatsapp silent" })
 
       -- Floating, centered, fuzzel-styled overlays for every special
-      -- workspace, Vesktop included. Size and position come from
+      -- workspace, Vesktop and ZapFast included. Size and position come from
       -- overlay-geometry.nix, which also places the special-workspace
       -- label bar in desktop-tools.nix.
-      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop"}) do
+      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast"}) do
         hl.window_rule({
           name = "float-style-" .. cls,
           match = { class = "^" .. cls .. "$" },
@@ -314,13 +327,14 @@ in
       hl.bind("XF86AudioStop", hl.dsp.exec_cmd("${media} stop"), { locked = true, description = "Stop playback" })
 
       hl.bind("SUPER + T", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot"}"), { description = "Terminal" })
-      hl.bind("SUPER + W", hl.dsp.exec_cmd("${app "${profileBin}/firefox"}"), { description = "Browser" })
+      hl.bind("SUPER + B", hl.dsp.exec_cmd("${app "${profileBin}/microsoft-edge-stable"}"), { description = "Browser" })
       hl.bind("SUPER + C", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot ${config.programs.vim.package}/bin/vim"}"), { description = "Editor (vim)" })
       hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("${app "${pkgs.pavucontrol}/bin/pavucontrol"}"), { description = "Volume mixer" })
 
       -- Special workspaces (toggle visibility, launch on first use).
       hl.bind("SUPER + M", hl.dsp.exec_cmd("${toggleMusic}"), { description = "Music (rmpc)" })
       hl.bind("SUPER + D", hl.dsp.exec_cmd("${toggleDiscord}"), { description = "Discord (Vesktop)" })
+      hl.bind("SUPER + W", hl.dsp.exec_cmd("${toggleWhatsApp}"), { description = "WhatsApp (ZapFast)" })
       hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd("${toggleBtop}"), { description = "System monitor (btop)" })
       hl.bind("SUPER + S", hl.dsp.exec_cmd("${toggleGeneral}"), { description = "Scratch terminal" })
       hl.bind("SUPER + E", hl.dsp.exec_cmd("${toggleFiles}"), { description = "Files (lf)" })
