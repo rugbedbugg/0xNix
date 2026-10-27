@@ -16,6 +16,7 @@
       "**/.cline/"
       "**/.kiro/"
       "**/.amazonq/"
+      "**/.superpowers/"
       "**/.aider*"
     ];
   };
