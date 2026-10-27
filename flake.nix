@@ -13,6 +13,10 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    aws-agent-toolkit = {
+      url = "github:aws/agent-toolkit-for-aws/7fcb1da17abba610d7becc973c2141b40412e02c";
+      flake = false;
+    };
     ly-lock = {
       url = "github:rugbedbugg/ly-lock";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -24,6 +28,7 @@
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
+      aws-agent-toolkit,
       ly-lock,
       ...
     }:
@@ -37,6 +42,16 @@
       pkgsUnstable = import nixpkgs-unstable {
         inherit system;
         config.allowUnfree = true;
+      };
+      asm-exec = pkgsUnstable.writeShellApplication {
+        name = "asm-exec";
+        runtimeInputs = [
+          pkgsUnstable.python3
+          pkgsUnstable.awscli2
+        ];
+        text = ''
+          exec python3 ${aws-agent-toolkit}/plugins/aws-core/skills/aws-secrets-manager/references/asm-exec "$@"
+        '';
       };
       host = nixpkgs.lib.nixosSystem {
         inherit system;
@@ -90,6 +105,7 @@
             # `aws ssm start-session` hands the session to this binary, so it
             # updates together with the CLI.
             ssm-session-manager-plugin
+            asm-exec
             firefox
             google-chrome
             microsoft-edge

@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "aws-agent-toolkit": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789473286,
+        "narHash": "sha256-p2rgpc3hah6Esi5nRBFp9RwJQ7ZkVcIdxiv8EU8MEas=",
+        "owner": "aws",
+        "repo": "agent-toolkit-for-aws",
+        "rev": "7fcb1da17abba610d7becc973c2141b40412e02c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "aws",
+        "repo": "agent-toolkit-for-aws",
+        "rev": "7fcb1da17abba610d7becc973c2141b40412e02c",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -75,6 +92,7 @@
     },
     "root": {
       "inputs": {
+        "aws-agent-toolkit": "aws-agent-toolkit",
         "home-manager": "home-manager",
         "ly-lock": "ly-lock",
         "nixpkgs": "nixpkgs",
