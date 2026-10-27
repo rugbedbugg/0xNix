@@ -45,6 +45,7 @@ in
       "**/.cline/"
       "**/.kiro/"
       "**/.amazonq/"
+      "**/.superpowers/"
       "**/.aider*"
     ];
   };
