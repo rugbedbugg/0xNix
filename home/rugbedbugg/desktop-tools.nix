@@ -99,6 +99,60 @@ let
     exit 1
   '';
 
+  # Shell functions shared by the main bar's script modules. Each script puts
+  # jq, gawk and coreutils on its PATH.
+  #   emit TEXT TOOLTIP [CLASS]  print one waybar JSON line, with the tooltip
+  #                              escaped for Pango markup
+  #   row LABEL VALUE            print one aligned tooltip row
+  #   iec BYTES                  a byte count in KiB, MiB or GiB
+  #   rate BYTES                 a byte rate in kB/s, MB/s or GB/s
+  #   top                        read "BYTES COMMAND" lines and print rows
+  #                              for the five programs using the most. A
+  #                              program's processes add up to one row, and
+  #                              Nix wrapper names (.foo-wrapped) become foo.
+  barHelpers = ''
+    emit() {
+      jq -cn --arg text "$1" --arg tooltip "$2" --arg class "''${3:-}" \
+        '{text: $text, tooltip: ($tooltip | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")), class: $class}'
+    }
+
+    row() {
+      printf '%-10s %s\n' "$1" "$2"
+    }
+
+    iec() {
+      awk -v b="$1" 'BEGIN {
+        split("B KiB MiB GiB TiB", u, " "); i = 1
+        while (b >= 1024 && i < 5) { b /= 1024; i++ }
+        printf (i == 1 ? "%d %s" : "%.1f %s"), b, u[i]
+      }'
+    }
+
+    rate() {
+      awk -v b="$1" 'BEGIN {
+        split("B/s kB/s MB/s GB/s", u, " "); i = 1
+        while (b >= 1000 && i < 4) { b /= 1000; i++ }
+        printf (i == 1 ? "%d %s" : "%.1f %s"), b, u[i]
+      }'
+    }
+
+    top() {
+      awk '{
+        name = $2
+        sub(/.*\//, "", name); sub(/^\./, "", name); sub(/-wrapped$/, "", name); sub(/:$/, "", name)
+        sum[name] += $1
+      } END { for (n in sum) print sum[n], n }' \
+        | sort -rn | head -n 5 \
+        | {
+            label=Top
+            while read -r bytes name; do
+              row "$label" "$(printf '%-16s %s' "$name" "$(iec $bytes)")"
+              label=
+            done
+          }
+    }
+  '';
+
   # Network module for the main bar. Waybar's own network module has no
   # placeholder for the Wi-Fi channel width or the negotiated link rate, so
   # this script builds the bar text and tooltip from nmcli instead. It runs
@@ -115,19 +169,7 @@ let
         pkgs.gnugrep
       ]
     }
-
-    rate() {
-      awk -v b="$1" 'BEGIN {
-        split("B/s kB/s MB/s GB/s", u, " "); i = 1
-        while (b >= 1000 && i < 4) { b /= 1000; i++ }
-        printf (i == 1 ? "%d %s" : "%.1f %s"), b, u[i]
-      }'
-    }
-
-    emit() {
-      jq -cn --arg text "$1" --arg tooltip "$2" --arg class "$3" \
-        '{text: $text, tooltip: ($tooltip | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")), class: $class}'
-    }
+    ${barHelpers}
 
     prev_dev= prev_rx=0 prev_tx=0 prev_t=0
     while :; do
@@ -249,15 +291,234 @@ let
     exit 1
   '';
 
-  # GPU load for the main bar. The DRM card index depends on probe order.
-  # simpledrm can claim card0 at boot and push the real GPU to card1. Read
-  # the first card that reports a busy percentage instead of a fixed index.
-  # Print nothing when no card reports one so waybar hides the module.
-  gpuBusy = pkgs.writeShellScript "waybar-gpu" ''
+  # The PATH every stat script below starts from.
+  statPath = pkgs.lib.makeBinPath [
+    pkgs.jq
+    pkgs.coreutils
+    pkgs.gawk
+    pkgs.gnugrep
+    pkgs.findutils
+    pkgs.procps
+    pkgs.util-linux
+    pkgs.pciutils
+  ];
+
+  # RAM module. The percentage counts memory in use as total minus
+  # available, the same as waybar's own memory module.
+  memoryStatus = pkgs.writeShellScript "waybar-memory" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    while :; do
+      eval "$(awk '/^(MemTotal|MemAvailable|Buffers|Cached|Shmem):/ {
+        sub(":", "", $1); printf "%s=%d\n", $1, $2 * 1024
+      }' /proc/meminfo)"
+      used=$((MemTotal - MemAvailable))
+      tooltip=$(
+        row Used "$(iec $used) / $(iec $MemTotal)"
+        row Available "$(iec $MemAvailable)"
+        row Cached "$(iec $Cached)"
+        row Buffers "$(iec $Buffers)"
+        row Shared "$(iec $Shmem)"
+        ps -eo rss=,args= | awk '$1 > 0 { print $1 * 1024, $2 }' | top
+      )
+      emit "RAM $((used * 100 / MemTotal))%" "$tooltip"
+      sleep 5
+    done
+  '';
+
+  # Swap module. A zram device also shows how much it holds, what that
+  # takes in RAM once compressed, and the ratio between the two.
+  swapStatus = pkgs.writeShellScript "waybar-swap" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    while :; do
+      eval "$(awk '/^(SwapTotal|SwapFree):/ {
+        sub(":", "", $1); printf "%s=%d\n", $1, $2 * 1024
+      }' /proc/meminfo)"
+      if [ "$SwapTotal" -eq 0 ]; then
+        emit "Swap off" "No swap device"
+        sleep 5
+        continue
+      fi
+      used=$((SwapTotal - SwapFree))
+      tooltip=$(
+        row Used "$(iec $used) / $(iec $SwapTotal)"
+        tail -n +2 /proc/swaps | while read -r name _ size dev_used _; do
+          dev=''${name##*/}
+          if [ -r /sys/block/$dev/mm_stat ]; then
+            read -r orig compr ram _ < /sys/block/$dev/mm_stat
+            algo=$(grep -o '\[[^]]*\]' /sys/block/$dev/comp_algorithm | tr -d '[]')
+            row Device "$dev ($algo)"
+            row Stored "$(iec $orig)"
+            row "In RAM" "$(iec $ram)"
+            if [ "$compr" -gt 0 ]; then
+              row Ratio "$(awk -v a=$orig -v b=$compr 'BEGIN { printf "%.1fx", a / b }')"
+            fi
+          else
+            row Device "$name ($(iec $((dev_used * 1024))) / $(iec $((size * 1024))))"
+          fi
+        done
+        awk '/^VmSwap:/ && $2 > 0 { split(FILENAME, p, "/"); print $2 * 1024, p[3] }' \
+          /proc/[0-9]*/status 2>/dev/null \
+          | while read -r bytes pid; do
+              cmd=$(tr '\0' '\n' < /proc/$pid/cmdline 2>/dev/null | head -n1)
+              echo "$bytes ''${cmd:-?}"
+            done \
+          | top
+      )
+      emit "Swap $((used * 100 / SwapTotal))%" "$tooltip"
+      sleep 5
+    done
+  '';
+
+  # Disk module for /. The percentage matches df's Use%. Read and write
+  # rates come from the drive's sector counters, averaged since the last
+  # sample. Every other local filesystem gets a row of its own.
+  diskStatus = pkgs.writeShellScript "waybar-disk" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    src=$(findmnt -no SOURCE /)
+    fstype=$(findmnt -no FSTYPE /)
+    drive=$(lsblk -no PKNAME "$src" | head -n1)
+    model=$(cat /sys/block/$drive/device/model 2>/dev/null | xargs)
+
+    prev_r=0 prev_w=0 prev_t=0
+    while :; do
+      read -r size used avail < <(df -B1 --output=size,used,avail / | tail -n1)
+      read -r _ _ r _ _ _ w _ < /sys/block/$drive/stat
+      now=$(date +%s%N)
+      if [ "$prev_t" -gt 0 ]; then
+        read_rate=$(rate $(( (r - prev_r) * 512 * 1000000000 / (now - prev_t) )))
+        write_rate=$(rate $(( (w - prev_w) * 512 * 1000000000 / (now - prev_t) )))
+      else
+        read_rate="..." write_rate="..."
+      fi
+      prev_r=$r prev_w=$w prev_t=$now
+
+      tooltip=$(
+        row Mount /
+        row Device "''${src##*/} ($fstype)"
+        [ -n "$model" ] && row Drive "$model"
+        row Used "$(iec $used) / $(iec $size)"
+        row Free "$(iec $avail)"
+        row Read "$read_rate"
+        row Write "$write_rate"
+        df -B1 -l -x tmpfs -x devtmpfs -x efivarfs -x ramfs -x overlay \
+          --output=target,used,size | tail -n +2 \
+          | while read -r target t_used t_size; do
+              [ "$target" = / ] && continue
+              row "$target" "$(iec $t_used) / $(iec $t_size)"
+            done
+      )
+      emit "Disk $(( (used * 100 + used + avail - 1) / (used + avail) ))%" "$tooltip"
+      sleep 5
+    done
+  '';
+
+  # GPU module. The DRM card index depends on probe order. simpledrm can
+  # claim card0 at boot and push the real GPU to card1. Use the first card
+  # that reports a busy percentage instead of a fixed index. With no such
+  # card the script prints nothing and waybar hides the module. Rows the
+  # driver doesn't report are left out.
+  gpuStatus = pkgs.writeShellScript "waybar-gpu" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    card=
     for f in /sys/class/drm/card*/device/gpu_busy_percent; do
       if [ -r "$f" ]; then
-        exec ${pkgs.coreutils}/bin/cat "$f"
+        card=''${f%/gpu_busy_percent}
+        break
       fi
+    done
+    [ -n "$card" ] || exit 0
+    name=$(lspci -mm -s "$(basename "$(readlink -f "$card")")" | awk -F'"' '{ print $6 }')
+    hwmon=$(echo $card/hwmon/hwmon*)
+
+    sensor() {
+      [ -r "$hwmon/$1" ] && awk -v v="$(cat "$hwmon/$1")" -v d="$2" -v f="$3" 'BEGIN { printf f, v / d }'
+    }
+    pair() {
+      [ -r "$card/$1" ] && echo "$(iec $(cat "$card/$1")) / $(iec $(cat "$card/$2"))"
+    }
+
+    while :; do
+      busy=$(cat $card/gpu_busy_percent)
+      tooltip=$(
+        [ -n "$name" ] && row Model "$name"
+        row Load "$busy%"
+        v=$(sensor freq1_input 1000000 "%d MHz") && row Clock "$v"
+        v=$(sensor temp1_input 1000 "%d °C") && row Temp "$v"
+        v=$(sensor power1_input 1000000 "%.1f W") && row Power "$v"
+        v=$(pair mem_info_vram_used mem_info_vram_total) && row VRAM "$v"
+        v=$(pair mem_info_gtt_used mem_info_gtt_total) && row GTT "$v"
+      )
+      emit "GPU $busy%" "$tooltip"
+      sleep 2
+    done
+  '';
+
+  # Battery module. Batteries report either energy (µWh) or charge (µAh),
+  # so power and the time left come out in the units it uses. The classes
+  # match waybar's battery states: warning at 25% and critical at 10%.
+  batteryStatus = pkgs.writeShellScript "waybar-battery" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    bat=$(ls -d /sys/class/power_supply/BAT* 2>/dev/null | head -n1)
+    [ -n "$bat" ] || exit 0
+
+    get() {
+      cat "$bat/$1" 2>/dev/null
+    }
+
+    while :; do
+      capacity=$(get capacity) status=$(get status)
+      if [ -n "$(get energy_full)" ]; then
+        now=$(get energy_now) full=$(get energy_full) design=$(get energy_full_design)
+        draw=$(get power_now)
+        unit=Wh
+      else
+        now=$(get charge_now) full=$(get charge_full) design=$(get charge_full_design)
+        draw=$(get current_now)
+        unit=mAh
+      fi
+      volts=$(get voltage_now)
+
+      tooltip=$(
+        row Status "$status"
+        if [ "$unit" = Wh ]; then
+          row Charge "$(awk -v n=$now -v f=$full 'BEGIN { printf "%.1f / %.1f Wh", n / 1e6, f / 1e6 }')"
+          watts=$(awk -v p=$draw 'BEGIN { printf "%.1f", p / 1e6 }')
+        else
+          row Charge "$((now / 1000)) / $((full / 1000)) mAh"
+          watts=$(awk -v i=$draw -v v=$volts 'BEGIN { printf "%.1f", i * v / 1e12 }')
+        fi
+        [ "''${design:-0}" -gt 0 ] && row Health "$((full * 100 / design))%"
+        [ "''${draw:-0}" -gt 0 ] && row Power "$watts W"
+        case "$status" in
+          Discharging) left=$now ;;
+          Charging) left=$((full - now)) ;;
+          *) left= ;;
+        esac
+        if [ -n "$left" ] && [ "''${draw:-0}" -gt 0 ]; then
+          mins=$((left * 60 / draw))
+          row "$([ "$status" = Charging ] && echo "To full" || echo "To empty")" "$((mins / 60))h $((mins % 60))m"
+        fi
+        [ "$(get cycle_count)" -gt 0 ] 2>/dev/null && row Cycles "$(get cycle_count)"
+        row Model "$(get manufacturer) $(get model_name) ($(get technology))"
+      )
+      class=
+      if [ "$capacity" -le 10 ]; then
+        class=critical
+      elif [ "$capacity" -le 25 ]; then
+        class=warning
+      fi
+      emit "Bat $capacity%" "$tooltip" "$class"
+      sleep 5
     done
   '';
 in
@@ -327,13 +588,13 @@ in
         modules-center = [ "clock" ];
         modules-right = [
           "cpu"
-          "memory"
-          "memory#swap"
-          "disk"
+          "custom/memory"
+          "custom/swap"
+          "custom/disk"
           "custom/gpu"
           "custom/network"
           "pulseaudio"
-          "battery"
+          "custom/battery"
           "tray"
         ];
         clock = {
@@ -344,27 +605,23 @@ in
           format = "CPU {usage}%";
           interval = 2;
         };
-        memory = {
-          format = "RAM {percentage}%";
-          tooltip-format = "{used:0.1f} / {total:0.1f} GiB";
-          interval = 5;
+        # The stat scripts run for the bar's whole lifetime and print one
+        # JSON line per update, like the network module.
+        "custom/memory" = {
+          exec = "${memoryStatus}";
+          return-type = "json";
         };
-        "memory#swap" = {
-          format = "Swap {swapPercentage}%";
-          # Without its own tooltip-format this module falls back to the
-          # memory module's default tooltip, which shows RAM used.
-          tooltip-format = "{swapUsed:0.1f} / {swapTotal:0.1f} GiB";
-          interval = 5;
+        "custom/swap" = {
+          exec = "${swapStatus}";
+          return-type = "json";
         };
-        disk = {
-          path = "/";
-          format = "Disk {percentage_used}%";
-          interval = 30;
+        "custom/disk" = {
+          exec = "${diskStatus}";
+          return-type = "json";
         };
         "custom/gpu" = {
-          exec = "${gpuBusy}";
-          format = "GPU {}%";
-          interval = 2;
+          exec = "${gpuStatus}";
+          return-type = "json";
         };
         "custom/network" = {
           exec = "${networkStatus}";
@@ -375,32 +632,29 @@ in
           format-muted = "Muted";
           on-click = "${pkgs.pavucontrol}/bin/pavucontrol";
         };
-        battery = {
-          format = "Bat {capacity}%";
-          states = {
-            warning = 25;
-            critical = 10;
-          };
+        "custom/battery" = {
+          exec = "${batteryStatus}";
+          return-type = "json";
         };
       };
 
       style = ''
         * { font-family: "VGA", monospace; font-size: 13px; }
         window#waybar { background: #20242c; color: #eceff4; border-bottom: 2px solid #ffffff; border-radius: 0; }
-        #clock, #cpu, #memory, #disk, #custom-gpu, #custom-network, #pulseaudio, #battery, #tray { padding: 0 10px; }
+        #clock, #cpu, #custom-memory, #custom-swap, #custom-disk, #custom-gpu, #custom-network, #pulseaudio, #custom-battery, #tray { padding: 0 10px; }
         #workspaces button { color: #eceff4; padding: 0 7px; border-radius: 0; }
         #workspaces button.active { background: #eceff4; color: #20242c; border-radius: 0; }
         /* System stats: one distinct hue per stat, consistent with common
            system-monitor conventions (cpu/mem/disk/gpu each get their own
            color). Red stays reserved for alert states only. */
         #cpu { color: #5fd7ff; }
-        #memory { color: #c792ea; }
-        /* Swap is the same module type as RAM (#memory, id class .swap):
-           a dimmer shade of the same hue marks them as related. */
-        #memory.swap { color: #9d8fbf; }
-        #disk { color: #e5c07b; }
+        #custom-memory { color: #c792ea; }
+        /* Swap is a dimmer shade of the RAM hue, which marks the two as
+           related. */
+        #custom-swap { color: #9d8fbf; }
+        #custom-disk { color: #e5c07b; }
         #custom-gpu { color: #7ee787; }
-        #battery.critical { color: #ff0000; }
+        #custom-battery.critical { color: #ff0000; }
         /* Tooltips styled as mako toasts: opaque fill, 2px white border,
            square corners, 8px padding, same font and size. The GTK theme
            otherwise gives them a translucent, rounded, shadowed box. */
