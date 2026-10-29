@@ -17,7 +17,6 @@
       ripgrep
       fd
       jq
-      htop
       tree
       genact
       unzip
