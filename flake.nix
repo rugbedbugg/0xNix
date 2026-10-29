@@ -110,6 +110,11 @@
             google-chrome
             microsoft-edge
             zapfast
+            # Both reach YouTube through yt-dlp, which breaks when YouTube
+            # changes. Here it updates with the profile instead of waiting
+            # for a rebuild.
+            mpv
+            youtube-tui
           ];
         };
       };
