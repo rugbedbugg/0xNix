@@ -1,7 +1,7 @@
 { pkgs-unstable, ... }:
 {
-  # Configured TUI apps (MPD + rmpc, btop). Plain package installs live in
-  # packages.nix.
+  # Configured TUI apps (MPD + rmpc, btop, youtube-tui). Plain package
+  # installs live in packages.nix.
 
   # rmpc is an MPD client, not a standalone player — it needs an actual MPD
   # server to talk to. "pipewire" is a real, confirmed MPD output plugin on
@@ -46,5 +46,24 @@
       # painting its own, same as vim's oxide colour scheme.
       theme_background = false;
     };
+  };
+
+  # youtube-tui rewrites main.yml every time it starts, so a hand edit gets
+  # lost. Every key has a built-in default. Only env is set here, and it
+  # replaces the default env as a whole, so every entry is listed. foot
+  # stands in for konsole, which isn't installed. youtube-tui can't write to
+  # this read-only file and starts anyway. force replaces the file it wrote
+  # before this existed. The package itself is in the flake's apps profile.
+  xdg.configFile."youtube-tui/main.yml" = {
+    force = true;
+    text = ''
+      env:
+        save-path: ~/.local/share/youtube-tui/saved/
+        terminal-emulator: foot
+        browser: xdg-open
+        download-path: ~/Downloads/%(title)s-%(id)s.%(ext)s
+        video-player: mpv
+        youtube-downloader: yt-dlp
+    '';
   };
 }
