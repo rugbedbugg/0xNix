@@ -22,6 +22,7 @@
       unzip
       openssl
       libreoffice-fresh
+      lazygit
     ])
     ++ (with pkgs-unstable; [
       fastfetch
