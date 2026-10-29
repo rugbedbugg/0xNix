@@ -209,6 +209,23 @@ let
     workspace = "whatsapp";
     launchCmd = app "${profileBin}/zapfast";
   };
+
+  # YouTube via youtube-tui in foot, from the user profile. Videos it opens
+  # play in mpv, which youtube-tui starts with MPV_HOME pointing here instead
+  # of ~/.config/mpv. The player window then reports its own app-id, and the
+  # window rules below float it over the list. mpv started anywhere else
+  # keeps the plain "mpv" app-id.
+  youtubeMpv = pkgs.writeTextDir "mpv.conf" ''
+    wayland-app-id=youtube-player
+  '';
+
+  toggleYouTube = mkSpecialToggle {
+    class = "youtube-special";
+    workspace = "youtube";
+    launchCmd = app (
+      footAs "youtube-special" "${pkgs.coreutils}/bin/env MPV_HOME=${youtubeMpv} ${profileBin}/youtube-tui"
+    );
+  };
 in
 {
   # Desktop binds on top of hyprland.nix's core set, using the plain desktop
@@ -230,12 +247,16 @@ in
       hl.window_rule({ name = "lf-special-ws", match = { class = "^lf-special$" }, workspace = "special:files silent" })
       hl.window_rule({ name = "discord-special-ws", match = { class = "^vesktop$" }, workspace = "special:discord silent" })
       hl.window_rule({ name = "zapfast-special-ws", match = { class = "^zapfast$" }, workspace = "special:whatsapp silent" })
+      hl.window_rule({ name = "youtube-special-ws", match = { class = "^youtube-special$" }, workspace = "special:youtube silent" })
+      -- Not silent: the list is on screen when it starts a video, so the
+      -- player takes focus there.
+      hl.window_rule({ name = "youtube-player-ws", match = { class = "^youtube-player$" }, workspace = "special:youtube" })
 
       -- Floating, centered, fuzzel-styled overlays for every special
       -- workspace, Vesktop and ZapFast included. Size and position come from
       -- overlay-geometry.nix, which also places the special-workspace
       -- label bar in desktop-tools.nix.
-      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast"}) do
+      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player"}) do
         hl.window_rule({
           name = "float-style-" .. cls,
           match = { class = "^" .. cls .. "$" },
@@ -277,6 +298,7 @@ in
       hl.bind("SUPER + M", hl.dsp.exec_cmd("${toggleMusic}"), { description = "Music (rmpc)" })
       hl.bind("SUPER + D", hl.dsp.exec_cmd("${toggleDiscord}"), { description = "Discord (Vesktop)" })
       hl.bind("SUPER + W", hl.dsp.exec_cmd("${toggleWhatsApp}"), { description = "WhatsApp (ZapFast)" })
+      hl.bind("SUPER + Y", hl.dsp.exec_cmd("${toggleYouTube}"), { description = "YouTube (youtube-tui)" })
       hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd("${toggleBtop}"), { description = "System monitor (btop)" })
       hl.bind("SUPER + S", hl.dsp.exec_cmd("${toggleGeneral}"), { description = "Scratch terminal" })
       hl.bind("SUPER + E", hl.dsp.exec_cmd("${toggleFiles}"), { description = "Files (lf)" })

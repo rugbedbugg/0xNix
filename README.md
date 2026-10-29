@@ -115,6 +115,7 @@ More bindings, using the plain desktop tools
 | Super + M | Toggle the rmpc music overlay |
 | Super + D | Toggle the Discord (Vesktop) overlay |
 | Super + W | Toggle the WhatsApp (ZapFast) overlay |
+| Super + Y | Toggle the YouTube (youtube-tui) overlay |
 | Super + S | Toggle the scratch terminal overlay |
 | Ctrl + Shift + Esc | Toggle the btop overlay |
 | Super + Shift + W | Wallpaper switcher |
