@@ -141,6 +141,3 @@ Review and change pins deliberately, rebuild and inspect the resulting diff.
 Do not change `system.stateVersion` or `home.stateVersion` as an upgrade shortcut.
 `checks.configuration-safety` deliberately rejects boot/storage changes; changing
 that policy requires a deliberate baseline update in `checks/default.nix`.
-
-Keep the generation-1 rollback path and the relevant Home Manager backups until
-desktop and dual-boot validation are complete.
