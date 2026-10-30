@@ -94,7 +94,11 @@ let
   # it over the bar. At the same height, its text shares the clock's
   # baseline. The background is transparent, so the main bar shows through.
   besideClock =
-    { name, left, width }:
+    {
+      name,
+      left,
+      width,
+    }:
     {
       inherit name;
       layer = "top";
@@ -138,7 +142,7 @@ let
         }
         // {
           modules-right = [ "custom/recording" ];
-        # Clicking it stops the recording, like pressing the record key.
+          # Clicking it stops the recording, like pressing the record key.
           "custom/recording" = {
             exec = "${screenrec.status}";
             return-type = "json";
