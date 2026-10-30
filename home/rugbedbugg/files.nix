@@ -1,4 +1,9 @@
-{ pkgs, pkgs-unstable, ... }:
+{
+  config,
+  pkgs,
+  pkgs-unstable,
+  ...
+}:
 let
   # Preview pane: text through bat using the terminal's own 16 colours,
   # images as sixel (foot renders it), PDFs as text, archives as a file
@@ -24,6 +29,23 @@ let
         ${pkgs.file}/bin/file -Lb -- "$1"
         ;;
     esac
+  '';
+
+  # File dialogs from any app that asks the desktop portal (Chromium,
+  # Electron, Firefox) open lf in a floating foot window. The portal passes
+  # (1) multiple, (2) directory, (3) save, (4) the suggested path and
+  # (5) the file to write the chosen paths to. Opening a file in lf writes
+  # it (or every selected file) there and quits. A directory pick takes the
+  # directory lf is in when it quits. A save pick opens on the suggested
+  # file, which the portal has already created. Full store paths, since the
+  # portal service doesn't see the profile's PATH.
+  fileChooser = pkgs.writeShellScript "lf-filechooser" ''
+    if [ "$2" = 1 ]; then
+      set -- -last-dir-path "$5" "$4"
+    else
+      set -- -selection-path "$5" "$4"
+    fi
+    exec ${pkgs.foot}/bin/foot --app-id=filechooser ${config.programs.lf.package}/bin/lf "$@"
   '';
 in
 {
@@ -62,6 +84,7 @@ in
     keybindings = {
       "." = "set hidden!";
       a = "push %mkdir<space>";
+      "<enter>" = "open";
       "<delete>" = "delete";
     };
   };
@@ -93,6 +116,15 @@ in
     bd 38;2;229;192;123
     cd 38;2;229;192;123
     so 38;2;199;146;234
+  '';
+
+  # Backend config for the portal in modules/desktop/portals.nix.
+  xdg.configFile."xdg-desktop-portal-termfilechooser/config".text = ''
+    [filechooser]
+    cmd=${fileChooser}
+    default_dir=${config.home.homeDirectory}
+    open_mode=suggested
+    save_mode=suggested
   '';
 
   # A fallback for drag-and-drop, not bound to any key.

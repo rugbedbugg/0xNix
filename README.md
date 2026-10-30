@@ -130,6 +130,39 @@ More bindings, using the plain desktop tools
 | Ctrl + Super + Shift + R | Restart waybar |
 | Ctrl + Super + Shift + L | Suspend |
 
+### lf
+
+lf runs in the Super + E overlay. It also opens for file dialogs in apps
+that use the desktop portal, such as Edge and Vesktop.
+
+| Key | Action |
+|---|---|
+| j / k or ↓ / ↑ | Move down / up |
+| l, → or Enter | Enter a folder or open a file |
+| h or ← | Go to the parent folder |
+| gg / G | Jump to the top / bottom |
+| Ctrl + D / Ctrl + U | Move half a page down / up |
+| gh | Go to the home folder |
+| . | Show or hide hidden files |
+| / then n / N | Search, then jump to the next / previous match |
+| f then a letter | Jump to the next name starting with that letter. ; repeats it |
+| :cd path | Go to a path. Tab completes |
+| Space | Mark a file and move down |
+| u | Clear all marks |
+| y / d / p | Copy / cut / paste |
+| r | Rename |
+| a | Make a folder |
+| Delete | Delete, after a prompt |
+| q | Quit |
+
+In a file dialog:
+
+- Open a file to pick it.
+- Mark several with Space, then open one to pick them all.
+- Go into a folder and quit to pick that folder.
+- Open the suggested file to save.
+- Quit without opening anything to cancel.
+
 Volume, microphone mute, media and display brightness keys are configured. The
 session locks after ten idle minutes and requests a lock before suspend. Runtime
 checks, including successful unlock, are still required before treating this as

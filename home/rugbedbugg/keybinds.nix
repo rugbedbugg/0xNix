@@ -255,8 +255,9 @@ in
       -- Floating, centered, fuzzel-styled overlays for every special
       -- workspace, Vesktop and ZapFast included. Size and position come from
       -- overlay-geometry.nix, which also places the special-workspace
-      -- label bar in desktop-tools.nix.
-      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player"}) do
+      -- label bar in desktop-tools.nix. The lf file chooser (files.nix)
+      -- gets the same frame but opens on whatever workspace is in front.
+      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "filechooser"}) do
         hl.window_rule({
           name = "float-style-" .. cls,
           match = { class = "^" .. cls .. "$" },
