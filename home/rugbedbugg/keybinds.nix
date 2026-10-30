@@ -74,6 +74,8 @@ let
 
   # Ctrl + Alt + Delete session menu: fuzzel in its usual style, sized to
   # its entries instead of the launcher's full size, with no prompt line.
+  # 13 columns fit "Shutdown now?". The padding around the highlight stays
+  # at fuzzel's defaults, the same as the launcher.
   # Arrow keys move the selection, Enter runs it and Esc closes. Only the
   # listed entries can be picked. Logout, Reboot and Shutdown ask first,
   # with the question above No and Yes and No selected.
@@ -82,7 +84,7 @@ let
       lines=$1
       shift
       ${pkgs.fuzzel}/bin/fuzzel --dmenu --only-match --no-sort --hide-prompt \
-        --width 20 --lines "$lines" "$@"
+        --width 13 --lines "$lines" "$@"
     }
     confirm() {
       [ "$(printf 'No\nYes\n' | menu 2 --mesg "$1 now?")" = Yes ]
