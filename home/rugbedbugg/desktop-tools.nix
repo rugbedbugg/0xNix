@@ -7,6 +7,7 @@
 }:
 let
   geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
+  screenrec = import ./screenrec.nix { inherit config pkgs; };
   gtkTty = import ./gtk-tty.nix { inherit pkgs; };
   pavucontrol = gtkTty.wrap pkgs.pavucontrol "pavucontrol";
 
@@ -63,6 +64,95 @@ let
     #workspaces { background: #20242c; border: 2px solid #ffffff; }
     #workspaces button { color: #eceff4; background: transparent; padding: 0 7px; border: none; border-radius: 0; }
     #workspaces button.active, #workspaces button.visible { background: #eceff4; color: #20242c; }
+  '';
+
+  # Tooltips styled as mako toasts: opaque fill, 2px white border, square
+  # corners, 8px padding, same font and size. The GTK theme otherwise gives
+  # them a translucent, rounded, shadowed box. Every bar with tooltips
+  # shares these.
+  tooltipStyle = ''
+    tooltip, tooltip.background { background: #20242c; border: 2px solid #ffffff; border-radius: 0; box-shadow: none; opacity: 1; }
+    tooltip label { color: #ffffff; font-size: 11pt; padding: 8px; }
+  '';
+
+  # Where the clock sits, for the small bars laid over the main bar on
+  # either side of it. The clock never moves: it's alone in the main bar's
+  # centre, which waybar keeps in the screen's middle. At 13px the VGA font
+  # is 8px per character. The clock is 17 characters ("Fri 30 Oct  11:40")
+  # plus 10px padding on each side.
+  clockSlot = rec {
+    inherit (config.programs.waybar.settings.mainBar) height;
+    cell = 8;
+    width = 17 * cell + 20;
+    left = vars.screen.width / 2 - width / 2;
+    right = left + width;
+  };
+
+  # The shared part of such a bar's config. As with the special bar, the
+  # side margins set the width. Margins count from below the main bar's
+  # exclusive zone, so a negative top margin of the main bar's height lays
+  # it over the bar. At the same height, its text shares the clock's
+  # baseline. The background is transparent, so the main bar shows through.
+  besideClock =
+    { name, left, width }:
+    {
+      inherit name;
+      layer = "top";
+      position = "top";
+      inherit (clockSlot) height;
+      margin-top = -clockSlot.height;
+      margin-left = left;
+      margin-right = vars.screen.width - left - width;
+      exclusive = false;
+    };
+  besideClockStyle = ''
+    * { font-family: "VGA", monospace; font-size: 13px; border-radius: 0; }
+    window#waybar { background: transparent; }
+    ${tooltipStyle}
+  '';
+
+  # Recording timer bar: a waybar process that shows screenrec.nix's
+  # "REC m:ss" while a recording runs. It's its own layer surface, named
+  # waybar-recording, so the no_screen_share layer rule below can keep it
+  # out of screen captures. Recordings and screenshots get a black box
+  # there instead of the elapsed time.
+  #
+  # It sits flush against the clock's left edge and the text grows
+  # leftwards inside it, with room for 10 characters ("REC 100:00") plus
+  # 10px padding on each side.
+  #
+  # The recorder starts this bar's service with each recording and stops
+  # it afterwards. Waybar's own hide only makes a bar transparent and
+  # leaves the surface up, which would leave the black box in every
+  # capture.
+  recordingBarConfig =
+    let
+      width = 10 * clockSlot.cell + 20;
+    in
+    pkgs.writeText "waybar-recording-config.json" (
+      builtins.toJSON (
+        besideClock {
+          name = "waybar-recording";
+          left = clockSlot.left - width;
+          inherit width;
+        }
+        // {
+          modules-right = [ "custom/recording" ];
+        # Clicking it stops the recording, like pressing the record key.
+          "custom/recording" = {
+            exec = "${screenrec.status}";
+            return-type = "json";
+            on-click = "${screenrec.toggle} stop";
+          };
+        }
+      )
+    );
+
+  # A running recording needs stopping at some point, so it gets the alert
+  # red.
+  recordingBarStyle = pkgs.writeText "waybar-recording-style.css" ''
+    ${besideClockStyle}
+    #custom-recording { color: #ff0000; padding: 0 10px; }
   '';
 
   # Shows the bar while any special workspace is on screen and hides it
@@ -538,6 +628,11 @@ in
     uni-vga
   ];
   xdg.dataFile."themes/tty/gtk-4.0/gtk.css".source = gtkTty.css;
+  # The recording timer shows on screen only. Screen captures, including
+  # recordings and screenshots, draw a black box over it instead.
+  wayland.windowManager.hyprland.extraConfig = ''
+    hl.layer_rule({ name = "recording-timer-private", match = { namespace = "^waybar-recording$" }, no_screen_share = true })
+  '';
   programs = {
     foot = {
       enable = true;
@@ -659,11 +754,7 @@ in
         #custom-disk { color: #e5c07b; }
         #custom-gpu { color: #7ee787; }
         #custom-battery.critical { color: #ff0000; }
-        /* Tooltips styled as mako toasts: opaque fill, 2px white border,
-           square corners, 8px padding, same font and size. The GTK theme
-           otherwise gives them a translucent, rounded, shadowed box. */
-        tooltip, tooltip.background { background: #20242c; border: 2px solid #ffffff; border-radius: 0; box-shadow: none; opacity: 1; }
-        tooltip label { color: #ffffff; font-size: 11pt; padding: 8px; }
+        ${tooltipStyle}
         /* Tray right-click menus (each app's own menu, rendered by waybar
            through this same stylesheet) styled as fuzzel: opaque fill, 2px
            white border, square corners, 11pt, and the hovered row in
@@ -747,6 +838,19 @@ in
         Restart = "on-failure";
       };
       Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    # Started and stopped by the recorder, so nothing pulls it in at login.
+    waybar-recording = {
+      Unit = {
+        Description = "Recording timer bar";
+        PartOf = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${config.programs.waybar.package}/bin/waybar -c ${recordingBarConfig} -s ${recordingBarStyle}";
+        Restart = "on-failure";
+      };
     };
 
     # PartOf the bar: whenever the bar restarts (and so comes back hidden),

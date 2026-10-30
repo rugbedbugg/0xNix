@@ -126,6 +126,8 @@ More bindings, using the plain desktop tools
 | Ctrl + Alt + C | Dismiss all notifications |
 | Print | Screenshot the screen and open it in satty |
 | Super + Shift + S | Screenshot a region and open it in satty |
+| Super + R | Record the screen. Press again to stop |
+| Super + Shift + R | Record a region. Press again to stop |
 | Ctrl + Alt + V | Pavucontrol |
 | Ctrl + Super + Shift + R | Restart waybar |
 | Ctrl + Super + Shift + L | Suspend |
@@ -184,6 +186,19 @@ Screenshots open in satty. Nothing is saved or copied until you ask.
 | Ctrl + C | Copy to the clipboard |
 | Enter | Save and close |
 | Esc | Close without saving |
+
+### Recording
+
+- Each recording starts with a menu to pick the audio: none, system audio,
+  microphone, or system and microphone mixed. It remembers the last choice.
+- A red `REC m:ss` timer shows left of the clock while it runs. Its tooltip
+  lists the file, area, audio, encoder, size so far and start time.
+- Only you see the timer. Recordings and screenshots get a black box in its
+  place.
+- Click the timer or press the record key again to stop. A menu then asks
+  whether to keep the video.
+- Kept recordings are saved as MP4 in `~/Videos/Recordings`. Nothing is copied
+  to the clipboard.
 
 Volume, microphone mute, media and display brightness keys are configured. The
 session locks after ten idle minutes and requests a lock before suspend. Runtime
