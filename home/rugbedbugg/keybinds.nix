@@ -10,7 +10,10 @@ let
   geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
   screenrec = import ./screenrec.nix { inherit config pkgs; };
   gtkTty = import ./gtk-tty.nix { inherit pkgs; };
-  app = cmd: "${pkgs.uwsm}/bin/uwsm app -- ${cmd}";
+  # uwsm-app asks uwsm's resident app daemon for the launch command, which
+  # takes ~30ms. `uwsm app` starts a Python process for every launch and
+  # takes ~125ms.
+  app = cmd: "${pkgs.uwsm}/bin/uwsm-app -- ${cmd}";
   # Frequently updated packages installed with `nix profile`.
   profileBin = "${config.home.homeDirectory}/.nix-profile/bin";
   notify = "${pkgs.mako}/bin/makoctl";
