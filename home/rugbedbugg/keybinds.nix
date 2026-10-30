@@ -8,25 +8,26 @@
 }:
 let
   geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
+  gtkTty = import ./gtk-tty.nix { inherit pkgs; };
   app = cmd: "${pkgs.uwsm}/bin/uwsm app -- ${cmd}";
   # Frequently updated packages installed with `nix profile`.
   profileBin = "${config.home.homeDirectory}/.nix-profile/bin";
   notify = "${pkgs.mako}/bin/makoctl";
   media = "${pkgs.playerctl}/bin/playerctl";
 
-  # Full screen or a slurp region, copied to the clipboard and kept on disk.
+  # Full screen or a slurp region, opened in satty to crop and annotate.
+  # Nothing lands on disk or the clipboard until it's asked for there.
+  # satty doesn't create the save directory itself.
+  screenshotDir = "${config.xdg.userDirs.pictures}/Screenshots";
   screenshot = pkgs.writeShellScript "screenshot" ''
-    dir="${config.xdg.userDirs.pictures}/Screenshots"
-    ${pkgs.coreutils}/bin/mkdir -p "$dir"
-    file="$dir/$(${pkgs.coreutils}/bin/date +%F_%H-%M-%S).png"
+    ${pkgs.coreutils}/bin/mkdir -p "${screenshotDir}"
     if [ "$1" = region ]; then
       geometry=$(${pkgs.slurp}/bin/slurp) || exit 0
-      ${pkgs.grim}/bin/grim -g "$geometry" "$file"
+      set -- -g "$geometry"
     else
-      ${pkgs.grim}/bin/grim "$file"
+      set --
     fi
-    ${pkgs.wl-clipboard}/bin/wl-copy --type image/png < "$file"
-    ${pkgs.libnotify}/bin/notify-send "Screenshot saved" "$file"
+    ${pkgs.grim}/bin/grim "$@" - | ${app "${config.programs.satty.package}/bin/satty --filename -"}
   '';
 
   # Bare Super toggles the launcher: close it if it's already open,
@@ -233,6 +234,38 @@ in
   config = {
     home.packages = [ pkgs.playerctl ];
 
+    # Enter saves and closes, Ctrl+C copies and Ctrl+S saves. Neither runs
+    # on its own. Square corners match the rest of the rice.
+    programs.satty = {
+      enable = true;
+      # The tty theme (gtk-tty.nix), installed by desktop-tools.nix.
+      package = gtkTty.wrap pkgs.satty "satty";
+      settings = {
+        general = {
+          output-filename = "${screenshotDir}/%F_%H-%M-%S.png";
+          copy-command = "${pkgs.wl-clipboard}/bin/wl-copy";
+          actions-on-enter = [
+            "save-to-file"
+            "exit"
+          ];
+          actions-on-escape = [ "exit" ];
+          corner-roundness = 0;
+          no-window-decoration = true;
+        };
+        font.family = "VGA";
+        # Waybar's stat hues, with red first since it's the usual markup
+        # colour. Keys 1 to 6 pick them in this order.
+        color-palette.palette = [
+          "#ff0000"
+          "#e5c07b"
+          "#5fd7ff"
+          "#7ee787"
+          "#c792ea"
+          "#ffffff"
+        ];
+      };
+    };
+
     wayland.windowManager.hyprland.extraConfig = lib.mkAfter ''
       for _, direction in ipairs({"left", "right", "up", "down"}) do
         hl.bind("SUPER + SHIFT + " .. direction, hl.dsp.window.move({ direction = direction }), { description = "Move window " .. direction })
@@ -256,8 +289,9 @@ in
       -- workspace, Vesktop and ZapFast included. Size and position come from
       -- overlay-geometry.nix, which also places the special-workspace
       -- label bar in desktop-tools.nix. The lf file chooser (files.nix)
-      -- gets the same frame but opens on whatever workspace is in front.
-      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "filechooser"}) do
+      -- and the satty screenshot editor get the same frame but open on
+      -- whatever workspace is in front.
+      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "filechooser", "com\\.gabm\\.satty"}) do
         hl.window_rule({
           name = "float-style-" .. cls,
           match = { class = "^" .. cls .. "$" },

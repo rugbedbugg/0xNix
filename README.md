@@ -124,8 +124,8 @@ More bindings, using the plain desktop tools
 | Ctrl + Alt + Delete | Session menu: lock, logout, suspend, reboot, shutdown. Logout, reboot and shutdown ask first. |
 | Super + N | Show the last dismissed notification |
 | Ctrl + Alt + C | Dismiss all notifications |
-| Print | Screenshot the screen to the clipboard and `~/Pictures/Screenshots` |
-| Super + Shift + S | Screenshot a region |
+| Print | Screenshot the screen and open it in satty |
+| Super + Shift + S | Screenshot a region and open it in satty |
 | Ctrl + Alt + V | Pavucontrol |
 | Ctrl + Super + Shift + R | Restart waybar |
 | Ctrl + Super + Shift + L | Suspend |
@@ -162,6 +162,28 @@ In a file dialog:
 - Go into a folder and quit to pick that folder.
 - Open the suggested file to save.
 - Quit without opening anything to cancel.
+
+### satty
+
+Screenshots open in satty. Nothing is saved or copied until you ask.
+
+| Key | Action |
+|---|---|
+| c | Crop |
+| z / i / r / e | Arrow / line / rectangle / ellipse |
+| t | Text |
+| m | Numbered marker |
+| u | Blur |
+| g | Highlight |
+| b | Brush |
+| p | Pointer |
+| 1…0 | Pick a palette colour |
+| Ctrl + Z / Ctrl + Y | Undo / redo |
+| Ctrl + S | Save to `~/Pictures/Screenshots` |
+| Ctrl + Shift + S | Save as, through the lf file dialog |
+| Ctrl + C | Copy to the clipboard |
+| Enter | Save and close |
+| Esc | Close without saving |
 
 Volume, microphone mute, media and display brightness keys are configured. The
 session locks after ten idle minutes and requests a lock before suspend. Runtime
