@@ -50,6 +50,11 @@ let
   # (SHIFT=1, CTRL=4, ALT=8, SUPER=64). The 1-0 workspace binds collapse to
   # one row per action, and rows that come out identical are dropped.
   # Display only; picking a row just closes it. Toggles like the launcher.
+  #
+  # Media keys show as the laptop key that sends them. On this Vivobook Go
+  # E1404FA the F-row is in function mode, so the media keys need Fn.
+  # Fn + F1 to F5 send mute, volume down and up, and brightness down and
+  # up. Fn + F9 sends mic mute.
   cheatsheet = pkgs.writeShellScript "keybind-cheatsheet" ''
     if ${pkgs.procps}/bin/pkill -x fuzzel; then
       exit 0
@@ -60,7 +65,10 @@ let
         | map(select(($m / .b | floor) % 2 == 1) | .n);
       def keyname: {
           "SUPER_L": "(tap)", "slash": "/", "RETURN": "Enter", "Escape": "Esc",
-          "mouse:272": "Left drag", "mouse:273": "Right drag"
+          "mouse:272": "Left drag", "mouse:273": "Right drag",
+          "XF86AudioMute": "Fn + F1", "XF86AudioLowerVolume": "Fn + F2",
+          "XF86AudioRaiseVolume": "Fn + F3", "XF86MonBrightnessDown": "Fn + F4",
+          "XF86MonBrightnessUp": "Fn + F5", "XF86AudioMicMute": "Fn + F9"
         }[.] // .;
       map(select(.has_description))
       | map(
@@ -322,14 +330,12 @@ in
       hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("${screenrec.toggle} region"), { description = "Record region (again to stop)" })
       hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("${screenshot} region"), { description = "Screenshot region" })
 
-      -- Media actions ride on the hardware keys only. hyprland.nix binds the
-      -- volume keys the same way: one key per action, so the SUPER + / list
-      -- shows each action once. The play/pause key on standard keyboards
-      -- sends XF86AudioPlay.
-      hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("${media} play-pause"), { locked = true, description = "Play / pause" })
-      hl.bind("XF86AudioNext", hl.dsp.exec_cmd("${media} next"), { locked = true, description = "Next track" })
-      hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("${media} previous"), { locked = true, description = "Previous track" })
-      hl.bind("XF86AudioStop", hl.dsp.exec_cmd("${media} stop"), { locked = true, description = "Stop playback" })
+      -- The laptop has no media keys, but headset buttons send these. They
+      -- have no description, so the SUPER + / list leaves them out.
+      hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("${media} play-pause"), { locked = true })
+      hl.bind("XF86AudioNext", hl.dsp.exec_cmd("${media} next"), { locked = true })
+      hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("${media} previous"), { locked = true })
+      hl.bind("XF86AudioStop", hl.dsp.exec_cmd("${media} stop"), { locked = true })
 
       hl.bind("SUPER + T", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot"}"), { description = "Terminal" })
       hl.bind("SUPER + B", hl.dsp.exec_cmd("${app "${profileBin}/microsoft-edge-stable"}"), { description = "Browser" })
