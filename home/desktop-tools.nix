@@ -6,6 +6,7 @@
 }:
 let
   geometry = import ./overlay-geometry.nix { inherit (config.desktop) screen; };
+  gtkTty = import ./gtk-tty.nix { inherit pkgs; };
 
   # Special-workspace bar: a second, separate waybar process that sits on
   # the top-left corner of the floating special-workspace terminals
@@ -533,6 +534,7 @@ in
     nerd-fonts.dejavu-sans-mono
     uni-vga
   ];
+  xdg.dataFile."themes/tty/gtk-4.0/gtk.css".source = gtkTty.css;
   programs = {
     foot = {
       enable = true;
