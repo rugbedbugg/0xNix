@@ -7,6 +7,7 @@
 }:
 let
   geometry = import ./overlay-geometry.nix { inherit (config.desktop) screen; };
+  screenrec = import ./screenrec.nix { inherit config pkgs; };
   gtkTty = import ./gtk-tty.nix { inherit pkgs; };
   app = cmd: "${pkgs.uwsm}/bin/uwsm app -- ${cmd}";
   # Frequently updated packages installed with `nix profile`.
@@ -307,6 +308,8 @@ in
       hl.bind("SUPER + L", hl.dsp.exec_cmd("${pkgs.systemd}/bin/loginctl lock-session"), { description = "Lock screen" })
 
       hl.bind("Print", hl.dsp.exec_cmd("${screenshot}"), { description = "Screenshot" })
+      hl.bind("SUPER + R", hl.dsp.exec_cmd("${screenrec.toggle} full"), { description = "Record screen (again to stop)" })
+      hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("${screenrec.toggle} region"), { description = "Record region (again to stop)" })
       hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("${screenshot} region"), { description = "Screenshot region" })
 
       -- Media actions ride on the hardware keys only. hyprland.nix binds the
