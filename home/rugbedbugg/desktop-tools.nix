@@ -155,6 +155,44 @@ let
     #custom-recording { color: #ff0000; padding: 0 10px; }
   '';
 
+  # Mic bar: the REC timer's twin on the clock's right. Its text grows
+  # rightwards, with room for 7 characters ("Mic OFF"). It always shows, so
+  # the bar always runs. Clicking mutes the default mic and scrolling steps
+  # its level by 1% up to 100%.
+  micBarConfig =
+    let
+      width = 7 * clockSlot.cell + 20;
+    in
+    pkgs.writeText "waybar-mic-config.json" (
+      builtins.toJSON (
+        besideClock {
+          name = "waybar-mic";
+          left = clockSlot.right;
+          inherit width;
+        }
+        // {
+          modules-left = [ "custom/mic" ];
+          "custom/mic" = {
+            exec = "${micStatus}";
+            return-type = "json";
+            on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle";
+            on-scroll-up = "${pkgs.wireplumber}/bin/wpctl set-volume -l 1 @DEFAULT_AUDIO_SOURCE@ 1%+";
+            on-scroll-down = "${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 1%-";
+          };
+        }
+      )
+    );
+
+  # A live mic gets the alert red, like the other things that need
+  # attention. A muted one gets the grey that marks disabled things
+  # elsewhere in the rice.
+  micBarStyle = pkgs.writeText "waybar-mic-style.css" ''
+    ${besideClockStyle}
+    #custom-mic { padding: 0 10px; }
+    #custom-mic.on { color: #ff0000; }
+    #custom-mic.off { color: #6c7380; }
+  '';
+
   # Shows the bar while any special workspace is on screen and hides it
   # otherwise, driven by Hyprland's own `activespecial` IPC event — so it's
   # correct no matter how the workspace was hidden (its toggle key, switching
@@ -638,7 +676,7 @@ let
     done
   '';
 
-  # Shell functions for the volume module. Its script puts pulseaudio and
+  # Shared by the volume and mic modules. Each script puts pulseaudio and
   # jq on its PATH.
   #   device sinks|sources NAME  "DESCRIPTION|PORT|VOLUME|MUTED" for one
   #                              sink or source
@@ -655,7 +693,8 @@ let
 
   # Volume module. It redraws on PulseAudio events instead of polling, so
   # a volume key shows up at once. The tooltip covers the default output
-  # and every app playing sound.
+  # and every app playing sound. The mic has its own module beside the
+  # clock.
   volumeStatus = pkgs.writeShellScript "waybar-volume" ''
     export PATH=${
       pkgs.lib.makeBinPath [
@@ -697,6 +736,67 @@ let
       pactl subscribe | while read -r line; do
         case "$line" in
           *"on sink #"* | *"on sink-input #"* | *"on server"*) show ;;
+        esac
+      done
+      sleep 1
+    done
+  '';
+
+  # Mic module, shown beside the clock (micBarConfig). It always shows the
+  # default mic: "Mic ON" when live, "Mic OFF" when muted. The tooltip names
+  # the mic, its level and the apps recording from a mic. Speaker monitors
+  # don't count as recording, and neither do pavucontrol's level meters
+  # ("Peak detect" streams). Like the volume module, it redraws on
+  # PulseAudio events.
+  micStatus = pkgs.writeShellScript "waybar-mic" ''
+    export PATH=${
+      pkgs.lib.makeBinPath [
+        pkgs.pulseaudio
+        pkgs.jq
+        pkgs.coreutils
+        pkgs.gawk
+      ]
+    }
+    ${barHelpers}
+    ${audioHelpers}
+
+    # One app name per stream recording from a mic.
+    listeners() {
+      jq -rn --argjson sources "$(pactl -f json list sources)" \
+        --argjson outputs "$(pactl -f json list source-outputs)" '
+        ($sources | map(select(.name | endswith(".monitor") | not) | .index)) as $mics
+        | $outputs[]
+        | select(.properties["media.name"] != "Peak detect")
+        | select(.source as $s | $mics | index($s))
+        | .properties["application.name"] // "?"'
+    }
+
+    show() {
+      IFS='|' read -r name port level muted < <(device sources "$(pactl get-default-source)")
+      apps=$(listeners)
+      tooltip=$(
+        row Input "$name"
+        [ -n "$port" ] && row Port "$port"
+        row Level "$level%$([ "$muted" = true ] && echo ", muted")"
+        label=Listening
+        while read -r app; do
+          [ -n "$app" ] || continue
+          row "$label" "$app"
+          label=
+        done <<< "$apps"
+      )
+      if [ "$muted" = true ]; then
+        emit "Mic OFF" "$tooltip" off
+      else
+        emit "Mic ON" "$tooltip" on
+      fi
+    }
+
+    while :; do
+      show
+      pactl subscribe | while read -r line; do
+        case "$line" in
+          *"on source #"* | *"on source-output #"* | *"on server"*) show ;;
         esac
       done
       sleep 1
@@ -807,8 +907,14 @@ in
   xdg.dataFile."themes/tty/gtk-4.0/gtk.css".source = gtkTty.css;
   # The recording timer shows on screen only. Screen captures, including
   # recordings and screenshots, draw a black box over it instead.
+  #
+  # The bars beside the clock share the main bar's layer, where the surface
+  # mapped last draws on top. Waybar remaps the main bar on every reload,
+  # which would cover them. Hyprland draws a layer's surfaces in
+  # descending order, so -1 keeps them above the main bar.
   wayland.windowManager.hyprland.extraConfig = ''
     hl.layer_rule({ name = "recording-timer-private", match = { namespace = "^waybar-recording$" }, no_screen_share = true })
+    hl.layer_rule({ name = "beside-clock-above-bar", match = { namespace = "^waybar-(mic|recording)$" }, order = -1 })
   '';
   programs = {
     foot = {
@@ -1029,6 +1135,19 @@ in
       };
       Service = {
         ExecStart = "${config.programs.waybar.package}/bin/waybar -c ${specialBarConfig} -s ${specialBarStyle}";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    waybar-mic = {
+      Unit = {
+        Description = "Mic indicator bar";
+        PartOf = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${config.programs.waybar.package}/bin/waybar -c ${micBarConfig} -s ${micBarStyle}";
         Restart = "on-failure";
       };
       Install.WantedBy = [ "graphical-session.target" ];
