@@ -68,14 +68,17 @@ nix --extra-experimental-features 'nix-command flakes' flake check --max-jobs 2 
 nix --extra-experimental-features 'nix-command flakes' build .#system --out-link result-system --max-jobs 2 --cores 2
 ```
 
-These commands write build results to the Nix store and a local result symlink.
-They do not change the active system, user configuration, bootloader or EFI files.
-The running configuration enables flakes. Use the explicit repository path for
-future rebuilds. The original `/etc/nixos` files are retired to
-`/etc/nixos/retired-2026-10-21/`. A bare `nixos-rebuild switch` stops with an
-error that points back to the flake.
-The first permanent activation is complete; do not rerun its one-time helper.
-Future activations still require build/test validation and a check of any EFI writes.
+- These commands write build results to the Nix store and a local result
+  symlink. They do not change the active system, user configuration,
+  bootloader or EFI files.
+- The running configuration enables flakes. Use the explicit repository path
+  for future rebuilds.
+- The original `/etc/nixos` files are retired to
+  `/etc/nixos/retired-2026-10-21/`. A bare `nixos-rebuild switch` stops with an
+  error that points back to the flake.
+- The first permanent activation is complete. Do not rerun its one-time helper.
+- Future activations still require build/test validation and a check of any
+  EFI writes.
 
 ## Development environments
 
@@ -83,12 +86,14 @@ Future activations still require build/test validation and a check of any EFI wr
 nix --extra-experimental-features 'nix-command flakes' develop .#python
 ```
 
-Available names: `default`, `python`, `go`, `bash`, `rust`, `node`, `cpp`, `systems`,
-and `ai`. The experimental-feature flag is optional on the active system.
-Each shell gets its packages from the same lock.
-Python projects may use `uv` to maintain their own dependency lock and virtualenv.
-Fish/direnv integration is configured, but each project's `.envrc` still needs
-the normal explicit `direnv allow` trust decision.
+- Available names: `default`, `python`, `go`, `bash`, `rust`, `node`, `cpp`,
+  `systems` and `ai`.
+- The experimental-feature flag is optional on the active system.
+- Each shell gets its packages from the same lock.
+- Python projects may use `uv` to maintain their own dependency lock and
+  virtualenv.
+- Fish/direnv integration is configured. Each project's `.envrc` still needs
+  the normal explicit `direnv allow` trust decision.
 
 ## Desktop controls
 
@@ -200,14 +205,16 @@ Screenshots open in satty. Nothing is saved or copied until you ask.
 - Kept recordings are saved as MP4 in `~/Videos/Recordings`. Nothing is copied
   to the clipboard.
 
-Volume, microphone mute, media and display brightness keys are configured. The
-session locks after ten idle minutes and requests a lock before suspend. Runtime
-checks, including successful unlock, are still required before treating this as
-verified.
+- Volume, microphone mute, media and display brightness keys are configured.
+- The session locks after ten idle minutes and requests a lock before suspend.
+- Runtime checks, including successful unlock, are still required before
+  treating this as verified.
 
 ## Updates
 
-Review and change pins deliberately, rebuild and inspect the resulting diff.
-Do not change `system.stateVersion` or `home.stateVersion` as an upgrade shortcut.
-`checks.configuration-safety` deliberately rejects boot/storage changes; changing
-that policy requires a deliberate baseline update in `checks/default.nix`.
+- Review and change pins deliberately, rebuild and inspect the resulting diff.
+- Do not change `system.stateVersion` or `home.stateVersion` as an upgrade
+  shortcut.
+- `checks.configuration-safety` deliberately rejects boot/storage changes.
+  Changing that policy requires a deliberate baseline update in
+  `checks/default.nix`.
