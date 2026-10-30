@@ -8,6 +8,7 @@
 let
   geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
   gtkTty = import ./gtk-tty.nix { inherit pkgs; };
+  pavucontrol = gtkTty.wrap pkgs.pavucontrol "pavucontrol";
 
   # Special-workspace bar: a second, separate waybar process that sits on
   # the top-left corner of the floating special-workspace terminals
@@ -529,6 +530,7 @@ in
     grim
     slurp
     libnotify
+    # Wrapped to run with the tty theme below.
     pavucontrol
     noto-fonts
     noto-fonts-color-emoji
@@ -632,7 +634,7 @@ in
         pulseaudio = {
           format = "Vol {volume}%";
           format-muted = "Muted";
-          on-click = "${pkgs.pavucontrol}/bin/pavucontrol";
+          on-click = "${pavucontrol}/bin/pavucontrol";
         };
         "custom/battery" = {
           exec = "${batteryStatus}";
