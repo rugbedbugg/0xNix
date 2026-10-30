@@ -111,7 +111,7 @@ let
         if ${pkgs.procps}/bin/pkill -f -- "${switcher}/bin/"; then
           exit 0
         fi
-        exec ${pkgs.uwsm}/bin/uwsm app -- ${switcher}/bin/wallpaper-switcher \
+        exec ${pkgs.uwsm}/bin/uwsm-app -- ${switcher}/bin/wallpaper-switcher \
           "$dir" "$(${pkgs.coreutils}/bin/readlink "$link" 2>/dev/null)" "$0"
         ;;
       *)
