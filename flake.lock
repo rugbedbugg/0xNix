@@ -45,11 +45,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793354495,
-        "narHash": "sha256-YcBFvRfyDjraC4BZSVqBG+tO7MTJdndt1ni5jUcOp7s=",
+        "lastModified": 1793363922,
+        "narHash": "sha256-0E9S9BE7oYhAK37//7HCQzG3dl5wwbRWSPLUTK6zees=",
         "owner": "rugbedbugg",
         "repo": "ly-lock",
-        "rev": "4a3f69f9c5a5604b56a25bf234bcbde4ee08ce0d",
+        "rev": "e5fb69fa4035107cc980c527fdfbd0d3845f5970",
         "type": "github"
       },
       "original": {
