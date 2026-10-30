@@ -196,12 +196,19 @@ let
   #   emit TEXT TOOLTIP [CLASS]  print one waybar JSON line, with the tooltip
   #                              escaped for Pango markup
   #   row LABEL VALUE            print one aligned tooltip row
+  #   cell NAME                  NAME in a 16-column cell. A longer one is
+  #                              cut to 15 and ends in ~, so the column
+  #                              after it stays aligned
   #   iec BYTES                  a byte count in KiB, MiB or GiB
   #   rate BYTES                 a byte rate in kB/s, MB/s or GB/s
-  #   top                        read "BYTES COMMAND" lines and print rows
+  #   pcpu SHARE                 a CPU share as a percentage
+  #   top [FORMAT]               read "VALUE COMMAND" lines and print rows
   #                              for the five programs using the most. A
-  #                              program's processes add up to one row, and
-  #                              Nix wrapper names (.foo-wrapped) become foo.
+  #                              program's processes add up to one row, Nix
+  #                              wrapper names (.foo-wrapped) become foo and
+  #                              kernel threads ([kworker/0:1]) become kworker.
+  #                              FORMAT names the function that prints each
+  #                              value, iec by default.
   barHelpers = ''
     emit() {
       jq -cn --arg text "$1" --arg tooltip "$2" --arg class "''${3:-}" \
@@ -210,6 +217,12 @@ let
 
     row() {
       printf '%-10s %s\n' "$1" "$2"
+    }
+
+    cell() {
+      local name=$1
+      [ ''${#name} -gt 16 ] && name="''${name:0:15}~"
+      printf '%-16s' "$name"
     }
 
     iec() {
@@ -228,17 +241,26 @@ let
       }'
     }
 
+    pcpu() {
+      awk -v p="$1" 'BEGIN { printf "%.1f%%", p }'
+    }
+
     top() {
+      fmt=''${1:-iec}
       awk '{
         name = $2
-        sub(/.*\//, "", name); sub(/^\./, "", name); sub(/-wrapped$/, "", name); sub(/:$/, "", name)
+        if (name ~ /^\[/) {
+          gsub(/^\[|\]$/, "", name); sub(/\/.*/, "", name)
+        } else {
+          sub(/.*\//, "", name); sub(/^\./, "", name); sub(/-wrapped$/, "", name); sub(/:$/, "", name)
+        }
         sum[name] += $1
       } END { for (n in sum) print sum[n], n }' \
         | sort -rn | head -n 5 \
         | {
             label=Top
-            while read -r bytes name; do
-              row "$label" "$(printf '%-16s %s' "$name" "$(iec $bytes)")"
+            while read -r value name; do
+              row "$label" "$(cell "$name") $($fmt $value)"
               label=
             done
           }
@@ -394,6 +416,69 @@ let
     pkgs.util-linux
     pkgs.pciutils
   ];
+
+  # CPU module. Usage is the share of CPU time spent outside idle and
+  # iowait since the last sample, the same as waybar's own cpu module. The
+  # top list measures each program over that same interval rather than
+  # ps's lifetime average, so it shows what is busy now. Its shares are of
+  # the whole CPU, so they add up to the usage figure.
+  cpuStatus = pkgs.writeShellScript "waybar-cpu" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    model=$(awk -F': ' '/^model name/ { print $2; exit }' /proc/cpuinfo)
+    threads=$(nproc)
+    temp=
+    for h in /sys/class/hwmon/hwmon*; do
+      case "$(cat $h/name)" in
+        k10temp | coretemp | zenpower)
+          temp=$h/temp1_input
+          break
+          ;;
+      esac
+    done
+
+    # "TOTAL IDLE" ticks for the whole CPU.
+    ticks() {
+      awk '/^cpu / { t = 0; for (i = 2; i <= 9; i++) t += $i; print t, $5 + $6; exit }' /proc/stat
+    }
+    # "PID TICKS NAME" for every process, named after argv[0] like the
+    # other modules' top lists.
+    procs() {
+      {
+        ps -eo pid=,args= | awk '{ print "n", $1, $2 }'
+        cat /proc/[0-9]*/stat 2>/dev/null | awk '{ pid = $1; sub(/^.*\) /, ""); print "t", pid, $12 + $13 }'
+      } | awk '$1 == "n" { name[$2] = $3 } $1 == "t" { t[$2] = $3 }
+          END { for (p in t) if (p in name) print p, t[p], name[p] }'
+    }
+
+    read -r prev_total prev_idle < <(ticks)
+    prev_procs=$(procs)
+    sleep 2
+    while :; do
+      read -r total idle < <(ticks)
+      cur_procs=$(procs)
+      dt=$((total - prev_total))
+      usage=$((dt > 0 ? (dt - (idle - prev_idle)) * 100 / dt : 0))
+      tooltip=$(
+        row Model "$model"
+        row Usage "$usage%"
+        row Threads "$threads"
+        v=$(cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq 2>/dev/null \
+          | awk '{ s += $1 } END { if (NR) printf "%d MHz average", s / NR / 1000 }')
+        [ -n "$v" ] && row Clock "$v"
+        [ -n "$temp" ] && row Temp "$(($(cat $temp) / 1000)) °C"
+        row Load "$(cut -d' ' -f1-3 /proc/loadavg)"
+        awk -v dt=$dt 'NR == FNR { prev[$1] = $2; next }
+            dt > 0 && ($1 in prev) && $2 > prev[$1] { print ($2 - prev[$1]) * 100 / dt, $3 }' \
+          <(printf '%s\n' "$prev_procs") <(printf '%s\n' "$cur_procs") \
+          | top pcpu
+      )
+      emit "CPU $usage%" "$tooltip"
+      prev_total=$total prev_idle=$idle prev_procs=$cur_procs
+      sleep 2
+    done
+  '';
 
   # RAM module. The percentage counts memory in use as total minus
   # available, the same as waybar's own memory module.
@@ -553,6 +638,98 @@ let
     done
   '';
 
+  # Shell functions for the volume module. Its script puts pulseaudio and
+  # jq on its PATH.
+  #   device sinks|sources NAME  "DESCRIPTION|PORT|VOLUME|MUTED" for one
+  #                              sink or source
+  audioHelpers = ''
+    device() {
+      pactl -f json list "$1" | jq -r --arg n "$2" '.[] | select(.name == $n)
+        | [.description,
+           ((.active_port as $p | .ports[] | select(.name == $p) | .description) // ""),
+           (.volume | to_entries[0].value.value_percent | rtrimstr("%")),
+           (.mute | tostring)]
+        | join("|")'
+    }
+  '';
+
+  # Volume module. It redraws on PulseAudio events instead of polling, so
+  # a volume key shows up at once. The tooltip covers the default output
+  # and every app playing sound.
+  volumeStatus = pkgs.writeShellScript "waybar-volume" ''
+    export PATH=${
+      pkgs.lib.makeBinPath [
+        pkgs.pulseaudio
+        pkgs.jq
+        pkgs.coreutils
+        pkgs.gawk
+      ]
+    }
+    ${barHelpers}
+    ${audioHelpers}
+
+    show() {
+      IFS='|' read -r out port vol muted < <(device sinks "$(pactl get-default-sink)")
+      tooltip=$(
+        row Output "$out"
+        [ -n "$port" ] && row Port "$port"
+        row Volume "$vol%$([ "$muted" = true ] && echo ", muted")"
+        pactl -f json list sink-inputs \
+          | jq -r '.[] | [(.properties["application.name"] // "?"), (.volume | to_entries[0].value.value_percent)] | @tsv' \
+          | {
+              label=Playing
+              while IFS=$'\t' read -r app v; do
+                row "$label" "$(cell "$app") $v"
+                label=
+              done
+            }
+      )
+      if [ "$muted" = true ]; then
+        emit Muted "$tooltip" muted
+      else
+        emit "Vol $vol%" "$tooltip"
+      fi
+    }
+
+    # pactl subscribe ends if the sound server restarts. Start over then.
+    while :; do
+      show
+      pactl subscribe | while read -r line; do
+        case "$line" in
+          *"on sink #"* | *"on sink-input #"* | *"on server"*) show ;;
+        esac
+      done
+      sleep 1
+    done
+  '';
+
+  # Nix logo at the left end of the bar. The tooltip names the running
+  # NixOS release and the system generation. `nixos-rebuild test` doesn't
+  # add a generation, so the tooltip says so when the running system isn't
+  # the newest one.
+  nixStatus = pkgs.writeShellScript "waybar-nix" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    while :; do
+      link=$(readlink /nix/var/nix/profiles/system)
+      gen=''${link#system-}
+      gen=''${gen%-link}
+      built=$(date -d "@$(stat -c %Y /nix/var/nix/profiles/$link)" '+%F %H:%M')
+      tooltip=$(
+        row NixOS "$(cat /run/current-system/nixos-version)"
+        if [ "$(readlink -f /run/current-system)" = "$(readlink -f /nix/var/nix/profiles/system)" ]; then
+          row Generation "$gen, built $built"
+        else
+          row Generation "a test build, newer than $gen"
+        fi
+        row Kernel "$(uname -r)"
+      )
+      emit "" "$tooltip"
+      sleep 30
+    done
+  '';
+
   # Battery module. Batteries report either energy (µWh) or charge (µAh),
   # so power and the time left come out in the units it uses. The classes
   # match waybar's battery states: warning at 25% and critical at 10%.
@@ -683,16 +860,19 @@ in
         layer = "top";
         position = "top";
         height = 32;
-        modules-left = [ "hyprland/workspaces" ];
+        modules-left = [
+          "custom/nix"
+          "hyprland/workspaces"
+        ];
         modules-center = [ "clock" ];
         modules-right = [
-          "cpu"
+          "custom/cpu"
           "custom/memory"
           "custom/swap"
           "custom/disk"
           "custom/gpu"
           "custom/network"
-          "pulseaudio"
+          "custom/volume"
           "custom/battery"
           "tray"
         ];
@@ -700,9 +880,9 @@ in
           format = "{:%a %d %b  %H:%M}";
           tooltip-format = "{:%F}";
         };
-        cpu = {
-          format = "CPU {usage}%";
-          interval = 2;
+        "custom/cpu" = {
+          exec = "${cpuStatus}";
+          return-type = "json";
         };
         # The stat scripts run for the bar's whole lifetime and print one
         # JSON line per update, like the network module.
@@ -726,13 +906,17 @@ in
           exec = "${networkStatus}";
           return-type = "json";
         };
-        pulseaudio = {
-          format = "Vol {volume}%";
-          format-muted = "Muted";
+        "custom/volume" = {
+          exec = "${volumeStatus}";
+          return-type = "json";
           on-click = "${pavucontrol}/bin/pavucontrol";
         };
         "custom/battery" = {
           exec = "${batteryStatus}";
+          return-type = "json";
+        };
+        "custom/nix" = {
+          exec = "${nixStatus}";
           return-type = "json";
         };
       };
@@ -740,13 +924,13 @@ in
       style = ''
         * { font-family: "VGA", monospace; font-size: 13px; }
         window#waybar { background: #20242c; color: #eceff4; border-bottom: 2px solid #ffffff; border-radius: 0; }
-        #clock, #cpu, #custom-memory, #custom-swap, #custom-disk, #custom-gpu, #custom-network, #pulseaudio, #custom-battery, #tray { padding: 0 10px; }
+        #clock, #custom-cpu, #custom-memory, #custom-swap, #custom-disk, #custom-gpu, #custom-network, #custom-volume, #custom-battery { padding: 0 10px; }
         #workspaces button { color: #eceff4; padding: 0 7px; border-radius: 0; }
         #workspaces button.active { background: #eceff4; color: #20242c; border-radius: 0; }
         /* System stats: one distinct hue per stat, consistent with common
            system-monitor conventions (cpu/mem/disk/gpu each get their own
            color). Red stays reserved for alert states only. */
-        #cpu { color: #5fd7ff; }
+        #custom-cpu { color: #5fd7ff; }
         #custom-memory { color: #c792ea; }
         /* Swap is a dimmer shade of the RAM hue, which marks the two as
            related. */
@@ -754,6 +938,16 @@ in
         #custom-disk { color: #e5c07b; }
         #custom-gpu { color: #7ee787; }
         #custom-battery.critical { color: #ff0000; }
+        /* The same 2px white rule as every border in the rice, between the
+           text stats and the tray icons. Icons need less room than text,
+           so the tray keeps only a few px on each side. */
+        #tray { border-left: 2px solid #ffffff; padding: 0 4px; }
+        /* VGA has no Nix logo, so it comes from the Nerd Font, in the light
+           blue of the NixOS logo. The Propo variant gives the icon its full
+           width. The plain one squeezes it into a text cell and clips it.
+           The glyph sits 1px low in its own box, so 2px of bottom padding
+           centres it on the workspace numbers. */
+        #custom-nix { font-family: "DejaVuSansM Nerd Font Propo"; font-size: 20px; color: #7ebae4; padding: 0 6px 2px 6px; }
         ${tooltipStyle}
         /* Tray right-click menus (each app's own menu, rendered by waybar
            through this same stylesheet) styled as fuzzel: opaque fill, 2px
