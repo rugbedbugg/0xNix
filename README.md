@@ -6,24 +6,28 @@ TTY-themed NixOS Hyprland workstation flake
 
 ## Screenshots
 
-| Bare Desktop | General Desktop view |
+| Bare desktop | Tiled windows |
 |---|---|
-| ![Desktop](assets/01-desktop.png) | ![Tiled windows](assets/02-tiled.png) |  
+| ![Desktop](assets/desktop.png) | ![Tiled windows](assets/tiled.png) |  
 
 | Fuzzel launcher | Keybind cheatsheet (Super + /) |
 |---|---|
-| ![Launcher](assets/03-launcher.png) | ![Keybinds](assets/05-keybinds.png) |  
+| ![Launcher](assets/launcher.png) | ![Keybinds](assets/keybinds.png) |  
 
 | btop overlay (Ctrl + Shift + Esc) | Wallpaper switcher (Super + Shift + W) |
 |---|---|
-| ![btop overlay](assets/06-btop.png) | ![Wallpaper switcher](assets/07-wallpapers.png) |
+| ![btop overlay](assets/btop.png) | ![Wallpaper switcher](assets/wallpapers.png) |
 
-| Session menu (Ctrl + Alt + Delete) |
+| Session menu (Ctrl + Alt + Delete) | Recording audio picker (Super + R) |
+|---|---|
+| ![Session menu](assets/session.png) | ![Recording audio picker](assets/recording.png) |
+
+| Pavucontrol (Ctrl + Alt + V) |
 |---|
-| ![Session menu](assets/08-session.png) |
+| ![Pavucontrol](assets/pavucontrol.png) |
 
 
-Waybar tooltips for CPU, RAM and disk:
+Waybar tooltips for CPU, RAM, swap, disk, GPU and battery:
 
 ![Waybar tooltips](assets/waybar-tooltips.png)
 
