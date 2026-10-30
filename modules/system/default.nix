@@ -31,6 +31,10 @@
   # modest RAM and an SSD — no disk wear, no hibernation/resume setup needed.
   zramSwap.enable = true;
 
+  # /tmp sits on the SSD, not in RAM, so build leftovers would pile up across
+  # reboots. Empty it at every boot.
+  boot.tmp.cleanOnBoot = true;
+
   nixpkgs.config.allowUnfree = true;
   nix = {
     settings = {
