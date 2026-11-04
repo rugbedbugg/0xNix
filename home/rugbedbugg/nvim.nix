@@ -148,6 +148,7 @@ in
 {
   programs.neovim = {
     enable = true;
+    defaultEditor = true;
     # Sourced from nixpkgs-unstable, like vim in default.nix.
     package = pkgs-unstable.neovim-unwrapped;
     plugins = with pkgs-unstable.vimPlugins; [

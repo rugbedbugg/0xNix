@@ -340,7 +340,7 @@ in
 
       hl.bind("SUPER + T", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot"}"), { description = "Terminal" })
       hl.bind("SUPER + B", hl.dsp.exec_cmd("${app "${profileBin}/microsoft-edge-stable"}"), { description = "Browser" })
-      hl.bind("SUPER + C", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot ${config.programs.vim.package}/bin/vim"}"), { description = "Editor (vim)" })
+      hl.bind("SUPER + C", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot ${config.programs.neovim.finalPackage}/bin/nvim"}"), { description = "Editor (nvim)" })
       hl.bind("SUPER + O", hl.dsp.exec_cmd("${app "${pkgs.libreoffice-fresh}/bin/libreoffice"}"), { description = "Office (LibreOffice)" })
       hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("${app "${gtkTty.wrap pkgs.pavucontrol "pavucontrol"}/bin/pavucontrol"}"), { description = "Volume mixer" })
 
