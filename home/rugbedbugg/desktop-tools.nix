@@ -1104,9 +1104,11 @@ let
   '';
 
   # Nix logo at the left end of the bar. The tooltip names the running
-  # NixOS release and the system generation. `nixos-rebuild test` doesn't
-  # add a generation, so the tooltip says so when the running system isn't
-  # the newest one.
+  # NixOS release, the nixpkgs and flake commits behind it, the Nix version
+  # and the system generation. `nixos-rebuild test` doesn't add a
+  # generation, so the tooltip says so when the running system isn't the
+  # newest one. The Config row reads system.configurationRevision
+  # (flake.nix).
   nixStatus = pkgs.writeShellScript "waybar-nix" ''
     export PATH=${statPath}
     ${barHelpers}
@@ -1116,14 +1118,31 @@ let
       gen=''${link#system-}
       gen=''${gen%-link}
       built=$(date -d "@$(stat -c %Y /nix/var/nix/profiles/$link)" '+%F %H:%M')
+      version=$(cat /run/current-system/nixos-version)
+      pkgsrev=''${version##*.}
+      pkgsdate=''${version%.*}
+      pkgsdate=''${pkgsdate##*.}
+      config=$(/run/current-system/sw/bin/nixos-version --json | jq -r '.configurationRevision // empty')
+      up=$(${pkgs.procps}/bin/uptime -p)
       tooltip=$(
-        row NixOS "$(cat /run/current-system/nixos-version)"
+        row NixOS "$version"
+        if [[ $pkgsdate =~ ^[0-9]{8}$ ]]; then
+          row Nixpkgs "$pkgsrev (''${pkgsdate:0:4}-''${pkgsdate:4:2}-''${pkgsdate:6:2})"
+        fi
+        row Nix "$(${osConfig.nix.package}/bin/nix --version | awk '{ print $NF }')"
+        if [ -n "$config" ]; then
+          row Config "''${config:0:7}"
+        else
+          row Config unknown
+        fi
         if [ "$(readlink -f /run/current-system)" = "$(readlink -f /nix/var/nix/profiles/system)" ]; then
           row Generation "$gen, built $built"
         else
-          row Generation "a test build, newer than $gen"
+          row Generation "Test build >> Gen $gen"
         fi
+        row Saved "$(ls -d /nix/var/nix/profiles/system-*-link | wc -l) generations"
         row Kernel "$(uname -r)"
+        row Uptime "''${up#up }"
       )
       emit "" "$tooltip"
       sleep 30

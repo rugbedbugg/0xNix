@@ -25,6 +25,7 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
@@ -61,6 +62,10 @@
           inherit vars palette;
         };
         modules = [
+          # The commit this system was built from, which the bar's Nix
+          # tooltip reads. A build from a dirty tree gets the commit with
+          # "-dirty" on the end.
+          { system.configurationRevision = self.rev or self.dirtyRev or null; }
           home-manager.nixosModules.home-manager
           ly-lock.nixosModules.default
           ./hosts/nixos
