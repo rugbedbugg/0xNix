@@ -63,7 +63,7 @@ let
     * { font-family: "VGA", monospace; font-size: 13px; border-radius: 0; }
     window#waybar { background: transparent; }
     #workspaces { background: ${palette.surface}; border: 2px solid ${palette.border}; }
-    #workspaces button { color: ${palette.text}; background: transparent; padding: 0 7px; border: none; border-radius: 0; }
+    #workspaces button { color: ${palette.text}; background: transparent; padding: 0 7px; border: none; border-radius: 0; font-weight: normal; }
     #workspaces button.active, #workspaces button.visible { background: ${palette.text}; color: ${palette.surface}; }
   '';
 
@@ -1370,7 +1370,8 @@ in
         * { font-family: "VGA", monospace; font-size: 13px; }
         window#waybar { background: ${palette.surface}; color: ${palette.text}; border-bottom: 2px solid ${palette.border}; border-radius: 0; }
         #custom-clock, #custom-cpu, #custom-memory, #custom-swap, #custom-disk, #custom-gpu, #custom-network, #custom-volume, #custom-battery { padding: 0 10px; }
-        #workspaces button { color: ${palette.text}; padding: 0 7px; border-radius: 0; }
+        /* The GTK 3 theme (gtk.nix) makes every button bold. */
+        #workspaces button { color: ${palette.text}; padding: 0 7px; border-radius: 0; font-weight: normal; }
         #workspaces button.active { background: ${palette.text}; color: ${palette.surface}; border-radius: 0; }
         /* System stats: one distinct hue per stat, consistent with common
            system-monitor conventions (cpu/mem/disk/gpu each get their own
