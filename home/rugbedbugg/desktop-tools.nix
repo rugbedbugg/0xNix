@@ -937,6 +937,172 @@ let
     done
   '';
 
+  # Clock module in the middle of the bar. The text is the plain date and
+  # time. The tooltip lists the date, ISO week, day of the year, quarter,
+  # UNIX epoch, UTC time and zone, then the month calendar beside them and a
+  # dot-matrix world map under both, with a marker on the current location.
+  #
+  # The location comes from ipinfo.io, once an hour at most, and is kept in
+  # the runtime directory. It is the address the network shows to the
+  # internet, so it follows a VPN exit. A failed lookup is not retried for
+  # 5 minutes. With no answer yet the tooltip says "unknown" and the map has
+  # no marker.
+  #
+  # world-map.txt is a 71x36 grid of land cells from the dotted-map library
+  # (the map in the portfolio site), where "+" is land. This script projects
+  # a position onto it the way the library does: Mercator, with the
+  # library's own extent for a map of this size. A marker that lands on
+  # water snaps to the mainland cell nearest to it. Two grid rows fold into
+  # one line of text with ":", "'" and "." so the map stays in the bar's
+  # VGA font, which has no block characters.
+  #
+  # The calendar is cal's month with its day columns spread to 32
+  # characters, so it fills the space beside the info rows. The tooltip
+  # text carries four control characters that become Pango spans after
+  # escaping: the marker (1 and 2) and today in the calendar (3 and 4). LC_CTYPE is UTF-8 so a city name with accents pads right.
+  clockStatus = pkgs.writeShellScript "waybar-clock" ''
+    export PATH=${statPath}:${pkgs.curl}/bin
+    export LC_CTYPE=C.UTF-8
+    ${barHelpers}
+
+    cache=''${XDG_RUNTIME_DIR:-/tmp}/waybar-location.json
+    tried=$cache.tried
+
+    fetch() {
+      touch "$tried"
+      tmp=$(mktemp)
+      if curl -fsS -m 10 https://ipinfo.io/json -o "$tmp" 2>/dev/null \
+        && jq -e '.loc' "$tmp" >/dev/null 2>&1; then
+        mv "$tmp" "$cache"
+      else
+        rm -f "$tmp"
+      fi
+    }
+
+    # worldmap LAT LON  the map as 18 lines. Without a position, no marker.
+    worldmap() {
+      awk -v lat="$1" -v lon="$2" '
+        BEGIN {
+          W = 71; H = 36; R = 6378137; pi = atan2(0, -1)
+          xmin = -18701674.453269962; xrange = 37403348.906539924
+          ymax = 11361819.887676764; yrange = 18884783.128941886
+          radius = 4
+        }
+        { for (c = 1; c <= W; c++) land[NR - 1, c - 1] = (substr($0, c, 1) == "+") }
+        END {
+          mr = -1
+          if (lat != "" && lon != "") {
+            phi = lat * pi / 180
+            px = R * lon * pi / 180
+            py = R * log(sin(pi / 4 + phi / 2) / cos(pi / 4 + phi / 2))
+            tc = int(W * (px - xmin) / xrange + 0.5)
+            tr = int(H * (ymax - py) / yrange + 0.5)
+            best = -1e9; fb = 1e9
+            for (r = 0; r < H; r++) for (c = 0; c < W; c++) {
+              if (!land[r, c]) continue
+              d = (r - tr) ^ 2 + (c - tc) ^ 2
+              if (d < fb) { fb = d; fr = r; fc = c }
+              if (d <= radius * radius) {
+                n = 0
+                for (dr = -1; dr <= 1; dr++) for (dc = -1; dc <= 1; dc++)
+                  if ((dr || dc) && land[r + dr, c + dc]) n++
+                s = n - d / 100
+                if (s > best) { best = s; br = r; bc = c }
+              }
+            }
+            if (best > -1e9) { mr = br; mc = bc } else if (fb < 1e9) { mr = fr; mc = fc }
+          }
+          for (r = 0; r < H; r += 2) {
+            line = ""
+            for (c = 0; c < W; c++) {
+              t = land[r, c]; b = land[r + 1, c]
+              g = t ? (b ? ":" : "\047") : (b ? "." : " ")
+              if (mr >= 0 && c == mc && (r == mr || r + 1 == mr)) g = "\001@\002"
+              line = line g
+            }
+            print line
+          }
+        }' ${./world-map.txt}
+    }
+
+    tick=0
+    loc_stamp=none
+    last_ymd=
+    while :; do
+      if [ $((tick % 60)) -eq 0 ] \
+        && [ -z "$(find "$cache" -mmin -60 2>/dev/null)" ] \
+        && [ -z "$(find "$tried" -mmin -5 2>/dev/null)" ]; then
+        fetch &
+      fi
+      tick=$((tick + 1))
+
+      stamp=$(stat -c %Y "$cache" 2>/dev/null)
+      if [ "$stamp" != "$loc_stamp" ]; then
+        loc_stamp=$stamp
+        city= country= lat= lon=
+        if [ -r "$cache" ]; then
+          IFS='|' read -r city country lat lon < <(
+            jq -r '[.city, .country, (.loc | split(",")[0]), (.loc | split(",")[1])] | join("|")' "$cache"
+          )
+        fi
+        map=$(worldmap "$lat" "$lon")
+      fi
+
+      IFS='|' read -r text dayname ymd isoweek yday mon epoch zone isoyear year < <(
+        date '+%a %d %b  %H:%M|%A|%F|%V|%-j|%-m|%s|%Z %:z|%G|%Y'
+      )
+      if [ "$ymd" != "$last_ymd" ]; then
+        last_ymd=$ymd
+        # Dec 28 always falls in the last ISO week of its year.
+        weeks=$(date -d "$isoyear-12-28" +%V)
+        ydays=$(date -d "$year-12-31" +%-j)
+        calendar=$(cal -m | awk -v today="$((10#''${ymd##*-}))" '
+          NR == 1 { gsub(/^ +| +$/, ""); printf "%*s\n", int((32 + length($0)) / 2), $0; next }
+          {
+            out = ""
+            for (i = 0; i < 7; i++) {
+              cell = substr($0, i * 3 + 1, 2)
+              if (NR > 2 && cell ~ /[0-9]/ && cell + 0 == today) cell = "\003" cell "\004"
+              out = out (i ? "   " : "") cell
+            }
+            print out
+          }')
+      fi
+
+      info=$(
+        row Date "$dayname $ymd"
+        row Week "$((10#$isoweek)) of $((10#$weeks))"
+        row Day "$yday of $ydays ($((yday * 100 / ydays))%)"
+        row Quarter "Q$(((mon - 1) / 3 + 1))"
+        row Epoch "$epoch"
+        row UTC "$(date -u +%H:%M:%S)"
+        row Zone "$zone"
+        if [ -n "$lat" ]; then
+          row Location "$city, $country"
+          row Coords "$lat, $lon"
+        else
+          row Location unknown
+        fi
+      )
+      tooltip=$(
+        awk -v pad=36 'NR == FNR { l[FNR] = $0; n = FNR; next } { r[FNR] = $0; m = FNR }
+          END { for (i = 1; i <= (n > m ? n : m); i++) printf "%-*s%s\n", pad, l[i], r[i] }' \
+          <(echo "$info") <(echo "$calendar")
+        echo
+        echo "$map"
+      )
+      jq -cn --arg text "$text" --arg tooltip "$tooltip" \
+        --arg mark "${palette.cpu}" --arg bg "${palette.text}" --arg fg "${palette.surface}" '{
+          text: $text,
+          tooltip: ($tooltip | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")
+            | gsub("\u0001"; "<span foreground=\"" + $mark + "\">") | gsub("\u0002"; "</span>")
+            | gsub("\u0003"; "<span background=\"" + $bg + "\" foreground=\"" + $fg + "\">") | gsub("\u0004"; "</span>")),
+          class: ""
+        }'
+      sleep 1
+    done
+  '';
+
   # Nix logo at the left end of the bar. The tooltip names the running
   # NixOS release and the system generation. `nixos-rebuild test` doesn't
   # add a generation, so the tooltip says so when the running system isn't
@@ -1124,7 +1290,7 @@ in
           "custom/nix"
           "hyprland/workspaces"
         ];
-        modules-center = [ "clock" ];
+        modules-center = [ "custom/clock" ];
         modules-right = [
           "custom/cpu"
           "custom/memory"
@@ -1136,9 +1302,9 @@ in
           "custom/battery"
           "tray"
         ];
-        clock = {
-          format = "{:%a %d %b  %H:%M}";
-          tooltip-format = "{:%F}";
+        "custom/clock" = {
+          exec = "${clockStatus}";
+          return-type = "json";
         };
         "custom/cpu" = {
           exec = "${cpuStatus}";
@@ -1184,7 +1350,7 @@ in
       style = ''
         * { font-family: "VGA", monospace; font-size: 13px; }
         window#waybar { background: ${palette.surface}; color: ${palette.text}; border-bottom: 2px solid ${palette.border}; border-radius: 0; }
-        #clock, #custom-cpu, #custom-memory, #custom-swap, #custom-disk, #custom-gpu, #custom-network, #custom-volume, #custom-battery { padding: 0 10px; }
+        #custom-clock, #custom-cpu, #custom-memory, #custom-swap, #custom-disk, #custom-gpu, #custom-network, #custom-volume, #custom-battery { padding: 0 10px; }
         #workspaces button { color: ${palette.text}; padding: 0 7px; border-radius: 0; }
         #workspaces button.active { background: ${palette.text}; color: ${palette.surface}; border-radius: 0; }
         /* System stats: one distinct hue per stat, consistent with common
