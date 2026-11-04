@@ -118,7 +118,7 @@ More bindings, using the plain desktop tools
 | Key | Action |
 |---|---|
 | Super (tap) | Fuzzel application launcher |
-| Super + T / B / C / O | Foot / Edge / vim in Foot / LibreOffice |
+| Super + T / B / C / O | Foot / Edge / Neovim in Foot / LibreOffice |
 | Super + / | Keybind cheatsheet |
 | Super + E | Toggle the lf file manager overlay |
 | Super + M | Toggle the rmpc music overlay |
