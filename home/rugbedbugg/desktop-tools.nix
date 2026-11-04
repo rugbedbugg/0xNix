@@ -583,7 +583,7 @@ let
         awk '/^VmSwap:/ && $2 > 0 { split(FILENAME, p, "/"); print $2 * 1024, p[3] }' \
           /proc/[0-9]*/status 2>/dev/null \
           | while read -r bytes pid; do
-              cmd=$(tr '\0' '\n' < /proc/$pid/cmdline 2>/dev/null | head -n1)
+              cmd=$({ tr '\0' '\n' < /proc/$pid/cmdline; } 2>/dev/null | head -n1)
               echo "$bytes ''${cmd:-?}"
             done \
           | top
