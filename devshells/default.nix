@@ -26,6 +26,7 @@ in
       uv
       ruff
       pyright
+      ty
     ]
   );
   go = mkShell (
