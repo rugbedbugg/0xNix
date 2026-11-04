@@ -35,6 +35,7 @@
     let
       system = "x86_64-linux";
       vars = import ./vars.nix;
+      palette = import ./palette.nix;
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
@@ -57,7 +58,7 @@
         inherit system;
         specialArgs = {
           pkgs-unstable = pkgsUnstable;
-          inherit vars;
+          inherit vars palette;
         };
         modules = [
           home-manager.nixosModules.home-manager

@@ -1,4 +1,9 @@
-{ pkgs-unstable, vars, ... }:
+{
+  pkgs-unstable,
+  vars,
+  palette,
+  ...
+}:
 {
   imports = [
     ./hardware-configuration.nix
@@ -16,7 +21,7 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "before-home-manager";
-    extraSpecialArgs = { inherit pkgs-unstable vars; };
+    extraSpecialArgs = { inherit pkgs-unstable vars palette; };
     users.${vars.username} = import ../../home/rugbedbugg;
   };
 }
