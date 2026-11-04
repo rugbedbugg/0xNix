@@ -714,6 +714,12 @@ let
 
     show() {
       IFS='|' read -r out port vol muted < <(device sinks "$(pactl get-default-sink)")
+      if [ -z "$vol" ]; then
+        pending=1
+        emit "Vol --" "No output device"
+        return
+      fi
+      pending=
       tooltip=$(
         row Output "$out"
         [ -n "$port" ] && row Port "$port"
@@ -735,14 +741,27 @@ let
       fi
     }
 
-    # pactl subscribe ends if the sound server restarts. Start over then.
+    # The bar can start before the sound server does. Subscribing first and
+    # drawing from inside the reader means no event in between gets lost. A
+    # lookup that finds no output prints "Vol --" and is retried every
+    # second until it does. The loop also starts over when pactl subscribe
+    # ends, which it does if the sound server restarts.
     while :; do
-      show
-      pactl subscribe | while read -r line; do
-        case "$line" in
-          *"on sink #"* | *"on sink-input #"* | *"on server"*) show ;;
-        esac
-      done
+      pactl subscribe | {
+        pending=
+        show
+        while :; do
+          if read -r -t 1 line; then
+            case "$line" in
+              *"on sink #"* | *"on sink-input #"* | *"on server"*) show ;;
+            esac
+          elif [ $? -gt 128 ]; then
+            [ -n "$pending" ] && show
+          else
+            break
+          fi
+        done
+      }
       sleep 1
     done
   '';
@@ -778,6 +797,12 @@ let
 
     show() {
       IFS='|' read -r name port level muted < <(device sources "$(pactl get-default-source)")
+      if [ -z "$level" ]; then
+        pending=1
+        emit "Mic --" "No input device"
+        return
+      fi
+      pending=
       apps=$(listeners)
       tooltip=$(
         row Input "$name"
@@ -797,13 +822,24 @@ let
       fi
     }
 
+    # Starts up like the volume module: subscribe first, then draw, and
+    # retry every second while there is no input.
     while :; do
-      show
-      pactl subscribe | while read -r line; do
-        case "$line" in
-          *"on source #"* | *"on source-output #"* | *"on server"*) show ;;
-        esac
-      done
+      pactl subscribe | {
+        pending=
+        show
+        while :; do
+          if read -r -t 1 line; then
+            case "$line" in
+              *"on source #"* | *"on source-output #"* | *"on server"*) show ;;
+            esac
+          elif [ $? -gt 128 ]; then
+            [ -n "$pending" ] && show
+          else
+            break
+          fi
+        done
+      }
       sleep 1
     done
   '';
