@@ -928,6 +928,26 @@ in
         font = "VGA:size=11";
         pad = "2x2";
       };
+      # The shell's 16 ANSI colours, so starship, fish, git and ls draw in
+      # the palette instead of foot's defaults. Alpha stays at foot's default,
+      # which keeps the terminal opaque.
+      settings.colors-dark =
+        let
+          slots =
+            prefix: colours:
+            builtins.listToAttrs (
+              builtins.genList (i: {
+                name = "${prefix}${toString i}";
+                value = builtins.substring 1 6 (builtins.elemAt colours i);
+              }) 8
+            );
+        in
+        {
+          background = palette.bare.surface;
+          foreground = palette.bare.text;
+        }
+        // slots "regular" palette.ansi.regular
+        // slots "bright" palette.ansi.bright;
     };
     fuzzel = {
       enable = true;
