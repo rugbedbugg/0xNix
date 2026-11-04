@@ -1394,8 +1394,8 @@ in
            side. */
         #custom-battery { border-right: 2px solid ${palette.border}; }
         #tray { padding: 0 4px; }
-        /* VGA has no Nix logo, so it comes from the Nerd Font, in the light
-           blue of the NixOS logo. The Propo variant gives the icon its full
+        /* VGA has no Nix logo, so it comes from the Nerd Font, in the
+           palette's blue. The Propo variant gives the icon its full
            width. The plain one squeezes it into a text cell and clips it.
            The glyph sits 1px low in its own box, so 2px of bottom padding
            centres it on the workspace numbers. */
