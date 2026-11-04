@@ -24,15 +24,29 @@ let
   # Nothing lands on disk or the clipboard until it's asked for there.
   # satty doesn't create the save directory itself.
   screenshotDir = "${config.xdg.userDirs.pictures}/Screenshots";
+
+  # The region picker runs inside wayfreeze, which holds the screen as it
+  # was when the key was pressed. slurp takes the pointer and the keyboard,
+  # so without the freeze waybar closes a tooltip and an app closes a menu
+  # before the shot is taken. The frozen frame is what grim captures. The
+  # screen thaws as soon as the shot is on disk, and a cancelled selection
+  # thaws it too. The shot goes through a file in the runtime directory
+  # because the freeze has to end before satty opens. satty reads it from
+  # stdin, so deleting the file afterwards is safe.
+  screenshotRegion = pkgs.writeShellScript "screenshot-region" ''
+    shot=$(${pkgs.coreutils}/bin/mktemp "$XDG_RUNTIME_DIR/screenshot.XXXXXX.png")
+    geometry=$(${pkgs.slurp}/bin/slurp)
+    [ -n "$geometry" ] && ${pkgs.grim}/bin/grim -g "$geometry" "$shot"
+    ${pkgs.procps}/bin/pkill -x wayfreeze
+    [ -s "$shot" ] && ${app "${config.programs.satty.package}/bin/satty --filename -"} < "$shot"
+    ${pkgs.coreutils}/bin/rm -f "$shot"
+  '';
   screenshot = pkgs.writeShellScript "screenshot" ''
     ${pkgs.coreutils}/bin/mkdir -p "${screenshotDir}"
     if [ "$1" = region ]; then
-      geometry=$(${pkgs.slurp}/bin/slurp) || exit 0
-      set -- -g "$geometry"
-    else
-      set --
+      exec ${pkgs.wayfreeze}/bin/wayfreeze --after-freeze-cmd "${screenshotRegion}"
     fi
-    ${pkgs.grim}/bin/grim "$@" - | ${app "${config.programs.satty.package}/bin/satty --filename -"}
+    ${pkgs.grim}/bin/grim - | ${app "${config.programs.satty.package}/bin/satty --filename -"}
   '';
 
   # Bare Super toggles the launcher: close it if it's already open,
