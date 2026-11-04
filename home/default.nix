@@ -55,7 +55,6 @@
     home-manager.enable = true;
     vim = {
       enable = true;
-      defaultEditor = true;
       # Sourced from nixpkgs-unstable — vim is in the daily-driver,
       # frequently-updated category alongside the unstable list in
       # packages.nix.
