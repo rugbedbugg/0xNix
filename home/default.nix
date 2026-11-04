@@ -15,6 +15,7 @@
     ./files.nix
     ./wallpaper.nix
     ./git.nix
+    ./nvim.nix
   ];
 
   home = {
