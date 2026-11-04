@@ -2,6 +2,7 @@
   pkgs,
   pkgs-unstable,
   vars,
+  palette,
   ...
 }:
 {
@@ -67,7 +68,7 @@
       # frequently-updated category alongside the unstable list in
       # packages.nix.
       packageConfigurable = pkgs-unstable.vim-full;
-      # vim/oxide.vim is the rice's colour scheme. It leaves the background
+      # vim/0xNix.vim is the rice's colour scheme. It leaves the background
       # transparent, so the terminal's shows through, and its colours are
       # 24-bit: foot supports that, and the t_8f/t_8b sequences make vim
       # emit it whatever $TERM's terminfo says.
@@ -76,9 +77,32 @@
         let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
         set termguicolors
         syntax on
-        colorscheme oxide
+        colorscheme 0xNix
+
+        "Kernel style C"
+        filetype plugin indent on
+        augroup c_kernel_style
+          autocmd!
+          autocmd FileType c,cpp setlocal noexpandtab tabstop=8 shiftwidth=8 softtabstop=8
+          autocmd FileType c,cpp setlocal cindent cinoptions=:0,l1,t0g0,(0 
+          autocmd FileType c,cpp setlocal textwidth=80 colorcolumn=81
+        augroup END
+
+        "Show tabs and trailing spaces so style errors are visible"
+        set list
+        set listchars=tab:>>\ ,trail:.
       '';
     };
   };
-  home.file.".vim/colors/oxide.vim".source = ./vim/oxide.vim;
+  home.file.".vim/colors/0xNix.vim".text =
+    let
+      colours = removeAttrs palette [
+        "bare"
+        "rgb"
+        "ansi"
+      ];
+    in
+    builtins.replaceStrings (map (name: "@${name}@") (
+      builtins.attrNames colours
+    )) (builtins.attrValues colours) (builtins.readFile ./vim/0xNix.vim);
 }
