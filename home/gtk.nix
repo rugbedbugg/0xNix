@@ -38,13 +38,13 @@ let
     popover_fg_color = palette.text;
     sidebar_bg_color = palette.surfaceContainer;
     sidebar_fg_color = palette.text;
-    # The accent is the light blue of the Nix logo on the bar. Its
-    # foreground is the dark surface, which reads on it.
+    # The accent is the blue of the Nix logo on the bar. Its foreground is
+    # the dark surface, which reads on it.
     accent_bg_color = palette.nix;
     accent_fg_color = palette.surface;
     accent_color = palette.nix;
     destructive_bg_color = palette.alert;
-    destructive_fg_color = palette.text;
+    destructive_fg_color = palette.surface;
     destructive_color = palette.alert;
     success_bg_color = palette.gpu;
     success_fg_color = palette.surface;
@@ -53,7 +53,7 @@ let
     warning_fg_color = palette.surface;
     warning_color = palette.disk;
     error_bg_color = palette.alert;
-    error_fg_color = palette.text;
+    error_fg_color = palette.surface;
     error_color = palette.alert;
   };
   named = lib.concatStringsSep "\n" (lib.mapAttrsToList (n: c: "@define-color ${n} ${c};") roles);
