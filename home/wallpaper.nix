@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  palette,
   ...
 }:
 let
@@ -31,7 +32,7 @@ let
       if [ -e "${link}" ]; then
         ${pkgs.swaybg}/bin/swaybg -m fill -i "$(${pkgs.coreutils}/bin/readlink -f "${link}")" &
       else
-        ${pkgs.swaybg}/bin/swaybg -c '#20242c' &
+        ${pkgs.swaybg}/bin/swaybg -c '${palette.surface}' &
       fi
       new=$!
       ${pkgs.coreutils}/bin/sleep 0.5
@@ -52,6 +53,18 @@ let
     done
   '';
 
+  # The switcher script, with its CSS colours filled in from the palette
+  # through the @name@ placeholders.
+  switcherScript = pkgs.replaceVars ./wallpaper-switcher.py {
+    inherit (palette)
+      border
+      surface
+      outlineVariant
+      black
+      textDim
+      ;
+  };
+
   # The switcher UI (wallpaper-switcher.py documents its keys). GTK 3 is
   # already on the system for waybar; the Python process only exists while
   # the switcher is open. wrapGAppsHook3 supplies the GObject typelibs, and
@@ -68,7 +81,7 @@ let
       (pkgs.python3.withPackages (ps: [ ps.pygobject3 ]))
     ];
     installPhase = ''
-      install -Dm755 ${./wallpaper-switcher.py} $out/bin/wallpaper-switcher
+      install -Dm755 ${switcherScript} $out/bin/wallpaper-switcher
     '';
     preFixup = ''
       gappsWrapperArgs+=(--set GDK_PIXBUF_MODULE_FILE ${pixbufLoaders})
@@ -151,7 +164,7 @@ in
         float = true,
         rounding = 0,
         border_size = 2,
-        border_color = "rgba(ffffffee)",
+        border_color = "rgba(${palette.bare.border}ee)",
       })
       hl.bind("SUPER + SHIFT + W", hl.dsp.exec_cmd("${wallpaper}/bin/wallpaper"), { description = "Wallpaper switcher" })
     '';

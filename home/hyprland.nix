@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, palette, ... }:
 {
   wayland.windowManager.hyprland = {
     enable = true;
@@ -21,8 +21,8 @@
           border_size = 2;
           layout = "dwindle";
           col = {
-            active_border = "rgba(ffffffee)";
-            inactive_border = "rgba(44444499)";
+            active_border = "rgba(${palette.bare.border}ee)";
+            inactive_border = "rgba(${palette.bare.outlineVariant}99)";
           };
         };
         decoration = {

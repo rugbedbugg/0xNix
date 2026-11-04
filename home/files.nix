@@ -2,6 +2,7 @@
   config,
   pkgs,
   pkgs-unstable,
+  palette,
   ...
 }:
 let
@@ -91,31 +92,31 @@ in
 
   # Highest-precedence colour source in lf (above LS_COLORS), so this is
   # the whole listing palette, in exact 24-bit values (38;2;R;G;B) taken
-  # from waybar rather than foot's 16-colour defaults:
-  #   directories  #ffffff  the white of every border in the rice
-  #   files        #9aa0aa  a clear step dimmer — the VGA font has no bold
-  #                         weight, and foot's white vs. bright white are
-  #                         too close to tell folders from files
-  #   symlinks     #5fd7ff  waybar CPU cyan
-  #   executables  #7ee787  waybar GPU green
-  #   devices/fifo #e5c07b  waybar disk yellow
-  #   sockets      #c792ea  waybar RAM purple
-  #   broken link  #ff0000  the only red: something is actually wrong
+  # from palette.nix rather than the terminal's 16 ANSI colours:
+  #   directories  border     the white of every border in the rice
+  #   files        textMuted  a clear step dimmer — the VGA font has no bold
+  #                           weight, and foot's white vs. bright white are
+  #                           too close to tell folders from files
+  #   symlinks     cpu        waybar CPU cyan
+  #   executables  gpu        waybar GPU green
+  #   devices/fifo disk       waybar disk yellow
+  #   sockets      memory     waybar RAM purple
+  #   broken link  alert      the only red: something is actually wrong
   xdg.configFile."lf/colors".text = ''
-    fi 38;2;154;160;170
-    di 38;2;255;255;255
-    tw 38;2;255;255;255
-    ow 38;2;255;255;255
-    st 38;2;255;255;255
-    ln 38;2;95;215;255
-    or 38;2;255;0;0
-    ex 38;2;126;231;135
-    su 38;2;126;231;135
-    sg 38;2;126;231;135
-    pi 38;2;229;192;123
-    bd 38;2;229;192;123
-    cd 38;2;229;192;123
-    so 38;2;199;146;234
+    fi 38;2;${palette.rgb.textMuted}
+    di 38;2;${palette.rgb.border}
+    tw 38;2;${palette.rgb.border}
+    ow 38;2;${palette.rgb.border}
+    st 38;2;${palette.rgb.border}
+    ln 38;2;${palette.rgb.cpu}
+    or 38;2;${palette.rgb.alert}
+    ex 38;2;${palette.rgb.gpu}
+    su 38;2;${palette.rgb.gpu}
+    sg 38;2;${palette.rgb.gpu}
+    pi 38;2;${palette.rgb.disk}
+    bd 38;2;${palette.rgb.disk}
+    cd 38;2;${palette.rgb.disk}
+    so 38;2;${palette.rgb.memory}
   '';
 
   # Backend config for the portal in modules/desktop/portals.nix.
