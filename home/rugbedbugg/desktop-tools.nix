@@ -116,13 +116,18 @@ let
     ${tooltipStyle}
   '';
 
+  # Width of the camera bar, with room for 7 characters ("Cam OFF") plus
+  # 10px padding on each side. It always shows, so the recording bar
+  # leaves its slot free.
+  camWidth = 7 * clockSlot.cell + 20;
+
   # Recording timer bar: a waybar process that shows screenrec.nix's
   # "REC m:ss" while a recording runs. It's its own layer surface, named
   # waybar-recording, so the no_screen_share layer rule below can keep it
   # out of screen captures. Recordings and screenshots get a black box
   # there instead of the elapsed time.
   #
-  # It sits flush against the clock's left edge and the text grows
+  # It sits flush against the camera bar's left edge and the text grows
   # leftwards inside it, with room for 10 characters ("REC 100:00") plus
   # 10px padding on each side.
   #
@@ -138,7 +143,7 @@ let
       builtins.toJSON (
         besideClock {
           name = "waybar-recording";
-          left = clockSlot.left - width;
+          left = clockSlot.left - camWidth - width;
           inherit width;
         }
         // {
@@ -196,6 +201,35 @@ let
     #custom-mic { padding: 0 10px; }
     #custom-mic.on { color: ${palette.alert}; }
     #custom-mic.off { color: ${palette.outline}; }
+  '';
+
+  # Camera bar: the mic bar's twin on the clock's left. Its text grows
+  # leftwards from the clock, with room for 7 characters ("Cam OFF"). It
+  # always shows, so the bar always runs.
+  camBarConfig = pkgs.writeText "waybar-cam-config.json" (
+    builtins.toJSON (
+      besideClock {
+        name = "waybar-cam";
+        left = clockSlot.left - camWidth;
+        width = camWidth;
+      }
+      // {
+        modules-right = [ "custom/cam" ];
+        "custom/cam" = {
+          exec = "${camStatus}";
+          return-type = "json";
+        };
+      }
+    )
+  );
+
+  # Same colours as the mic: red while a program has the camera open and
+  # grey while nothing does.
+  camBarStyle = pkgs.writeText "waybar-cam-style.css" ''
+    ${besideClockStyle}
+    #custom-cam { padding: 0 10px; }
+    #custom-cam.on { color: ${palette.alert}; }
+    #custom-cam.off { color: ${palette.outline}; }
   '';
 
   # Shows the bar while any special workspace is on screen and hides it
@@ -844,6 +878,65 @@ let
     done
   '';
 
+  # Camera module, shown beside the clock (camBarConfig). "Cam ON" means a
+  # program has a camera node open, "Cam OFF" means none does. The tooltip
+  # names the camera and the programs using it, which are found by scanning
+  # /proc for open /dev/video file descriptors. Only the user's own
+  # processes are visible that way, which covers every app in this session.
+  # Opening or closing a node wakes the loop through inotify, and the 3s
+  # timeout catches a node that appears later, like a USB camera plugged in.
+  # Output is printed only when it changes, since waybar redraws on every
+  # line.
+  camStatus = pkgs.writeShellScript "waybar-cam" ''
+    export PATH=${statPath}:${pkgs.inotify-tools}/bin
+    ${barHelpers}
+
+    # One program name per process holding a camera node open.
+    users() {
+      find /proc/[0-9]*/fd -lname '/dev/video*' 2>/dev/null \
+        | awk -F/ '!seen[$3]++ { print $3 }' \
+        | while read -r pid; do
+            cat /proc/$pid/comm 2>/dev/null
+          done \
+        | sort -u
+    }
+
+    show() {
+      apps=$(users)
+      tooltip=$(
+        label=Camera
+        for name in /sys/class/video4linux/*/name; do
+          [ -r "$name" ] && cat "$name"
+        done | sort -u | while read -r cam; do
+          row "$label" "$cam"
+          label=
+        done
+        label=Using
+        while read -r app; do
+          [ -n "$app" ] || continue
+          row "$label" "$app"
+          label=
+        done <<< "$apps"
+      )
+      if [ -n "$apps" ]; then
+        emit "Cam ON" "$tooltip" on
+      else
+        emit "Cam OFF" "$tooltip" off
+      fi
+    }
+
+    last=
+    while :; do
+      out=$(show)
+      if [ "$out" != "$last" ]; then
+        echo "$out"
+        last=$out
+      fi
+      inotifywait -qq -t 3 -e open -e close /dev/video* 2>/dev/null || sleep 1
+      sleep 0.2
+    done
+  '';
+
   # Nix logo at the left end of the bar. The tooltip names the running
   # NixOS release and the system generation. `nixos-rebuild test` doesn't
   # add a generation, so the tooltip says so when the running system isn't
@@ -955,7 +1048,7 @@ in
   # descending order, so -1 keeps them above the main bar.
   wayland.windowManager.hyprland.extraConfig = ''
     hl.layer_rule({ name = "recording-timer-private", match = { namespace = "^waybar-recording$" }, no_screen_share = true })
-    hl.layer_rule({ name = "beside-clock-above-bar", match = { namespace = "^waybar-(mic|recording)$" }, order = -1 })
+    hl.layer_rule({ name = "beside-clock-above-bar", match = { namespace = "^waybar-(mic|cam|recording)$" }, order = -1 })
   '';
   programs = {
     foot = {
@@ -1215,6 +1308,19 @@ in
       };
       Service = {
         ExecStart = "${config.programs.waybar.package}/bin/waybar -c ${micBarConfig} -s ${micBarStyle}";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    waybar-cam = {
+      Unit = {
+        Description = "Camera indicator bar";
+        PartOf = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${config.programs.waybar.package}/bin/waybar -c ${camBarConfig} -s ${camBarStyle}";
         Restart = "on-failure";
       };
       Install.WantedBy = [ "graphical-session.target" ];
