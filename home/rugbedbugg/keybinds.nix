@@ -300,6 +300,30 @@ in
       -- player takes focus there.
       hl.window_rule({ name = "youtube-player-ws", match = { class = "^youtube-player$" }, workspace = "special:youtube" })
 
+      -- A new window opens on the focused workspace, which is the special
+      -- one while an overlay is up. A foot from Super + T or a link opened
+      -- from Vesktop would then tile behind the floating overlay. Such a
+      -- window moves to the regular workspace in front instead and takes
+      -- focus. The overlay closes by itself when the workspace changes. The
+      -- toggle only runs if it is somehow still up, since toggling a closed
+      -- one would open it again. Floating windows stay put. Every overlay
+      -- app floats through the rules below, and so do the lf file chooser
+      -- and the youtube-tui player, which have to open over the overlay
+      -- they came from. The window's floating state and workspace are
+      -- already set when the event fires (confirmed live).
+      hl.on("window.open", function(w)
+        if w.floating or not w.workspace or not w.workspace.special then return end
+        local shown = hl.get_active_special_workspace()
+        if not shown or shown.name ~= w.workspace.name then return end
+        local target = hl.get_active_workspace()
+        hl.dispatch(hl.dsp.focus({ window = "address:" .. w.address }))
+        hl.dispatch(hl.dsp.window.move({ workspace = target.id }))
+        shown = hl.get_active_special_workspace()
+        if shown and shown.name == w.workspace.name then
+          hl.dispatch(hl.dsp.workspace.toggle_special((shown.name:gsub("^special:", ""))))
+        end
+      end)
+
       -- Floating, centered, fuzzel-styled overlays for every special
       -- workspace, Vesktop and ZapFast included. Size and position come from
       -- overlay-geometry.nix, which also places the special-workspace
