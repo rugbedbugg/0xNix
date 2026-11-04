@@ -3,12 +3,13 @@
   osConfig,
   pkgs,
   vars,
+  palette,
   ...
 }:
 let
   geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
   screenrec = import ./screenrec.nix { inherit config pkgs; };
-  gtkTty = import ./gtk-tty.nix { inherit pkgs; };
+  gtkTty = import ./gtk-tty.nix { inherit pkgs palette; };
   pavucontrol = gtkTty.wrap pkgs.pavucontrol "pavucontrol";
 
   # Special-workspace bar: a second, separate waybar process that sits on
@@ -61,9 +62,9 @@ let
   specialBarStyle = pkgs.writeText "waybar-special-style.css" ''
     * { font-family: "VGA", monospace; font-size: 13px; border-radius: 0; }
     window#waybar { background: transparent; }
-    #workspaces { background: #20242c; border: 2px solid #ffffff; }
-    #workspaces button { color: #eceff4; background: transparent; padding: 0 7px; border: none; border-radius: 0; }
-    #workspaces button.active, #workspaces button.visible { background: #eceff4; color: #20242c; }
+    #workspaces { background: ${palette.surface}; border: 2px solid ${palette.border}; }
+    #workspaces button { color: ${palette.text}; background: transparent; padding: 0 7px; border: none; border-radius: 0; }
+    #workspaces button.active, #workspaces button.visible { background: ${palette.text}; color: ${palette.surface}; }
   '';
 
   # Tooltips styled as mako toasts: opaque fill, 2px white border, square
@@ -71,8 +72,8 @@ let
   # them a translucent, rounded, shadowed box. Every bar with tooltips
   # shares these.
   tooltipStyle = ''
-    tooltip, tooltip.background { background: #20242c; border: 2px solid #ffffff; border-radius: 0; box-shadow: none; opacity: 1; }
-    tooltip label { color: #ffffff; font-size: 11pt; padding: 8px; }
+    tooltip, tooltip.background { background: ${palette.surface}; border: 2px solid ${palette.border}; border-radius: 0; box-shadow: none; opacity: 1; }
+    tooltip label { color: ${palette.border}; font-size: 11pt; padding: 8px; }
   '';
 
   # Where the clock sits, for the small bars laid over the main bar on
@@ -156,7 +157,7 @@ let
   # red.
   recordingBarStyle = pkgs.writeText "waybar-recording-style.css" ''
     ${besideClockStyle}
-    #custom-recording { color: #ff0000; padding: 0 10px; }
+    #custom-recording { color: ${palette.alert}; padding: 0 10px; }
   '';
 
   # Mic bar: the REC timer's twin on the clock's right. Its text grows
@@ -193,8 +194,8 @@ let
   micBarStyle = pkgs.writeText "waybar-mic-style.css" ''
     ${besideClockStyle}
     #custom-mic { padding: 0 10px; }
-    #custom-mic.on { color: #ff0000; }
-    #custom-mic.off { color: #6c7380; }
+    #custom-mic.on { color: ${palette.alert}; }
+    #custom-mic.off { color: ${palette.outline}; }
   '';
 
   # Shows the bar while any special workspace is on screen and hides it
@@ -945,13 +946,13 @@ in
           lines = 11;
         };
         colors = {
-          background = "20242cff";
-          text = "ffffffff";
-          match = "ff0000ff";
-          selection = "ffffffff";
-          selection-text = "20242cff";
-          selection-match = "ff0000ff";
-          border = "ffffffff";
+          background = "${palette.bare.surface}ff";
+          text = "${palette.bare.border}ff";
+          match = "${palette.bare.alert}ff";
+          selection = "${palette.bare.border}ff";
+          selection-text = "${palette.bare.surface}ff";
+          selection-match = "${palette.bare.alert}ff";
+          border = "${palette.bare.border}ff";
         };
         border = {
           width = 2;
@@ -1033,43 +1034,43 @@ in
 
       style = ''
         * { font-family: "VGA", monospace; font-size: 13px; }
-        window#waybar { background: #20242c; color: #eceff4; border-bottom: 2px solid #ffffff; border-radius: 0; }
+        window#waybar { background: ${palette.surface}; color: ${palette.text}; border-bottom: 2px solid ${palette.border}; border-radius: 0; }
         #clock, #custom-cpu, #custom-memory, #custom-swap, #custom-disk, #custom-gpu, #custom-network, #custom-volume, #custom-battery { padding: 0 10px; }
-        #workspaces button { color: #eceff4; padding: 0 7px; border-radius: 0; }
-        #workspaces button.active { background: #eceff4; color: #20242c; border-radius: 0; }
+        #workspaces button { color: ${palette.text}; padding: 0 7px; border-radius: 0; }
+        #workspaces button.active { background: ${palette.text}; color: ${palette.surface}; border-radius: 0; }
         /* System stats: one distinct hue per stat, consistent with common
            system-monitor conventions (cpu/mem/disk/gpu each get their own
            color). Red stays reserved for alert states only. */
-        #custom-cpu { color: #5fd7ff; }
-        #custom-memory { color: #c792ea; }
+        #custom-cpu { color: ${palette.cpu}; }
+        #custom-memory { color: ${palette.memory}; }
         /* Swap is a dimmer shade of the RAM hue, which marks the two as
            related. */
-        #custom-swap { color: #9d8fbf; }
-        #custom-disk { color: #e5c07b; }
-        #custom-gpu { color: #7ee787; }
-        #custom-battery.critical { color: #ff0000; }
+        #custom-swap { color: ${palette.swap}; }
+        #custom-disk { color: ${palette.disk}; }
+        #custom-gpu { color: ${palette.gpu}; }
+        #custom-battery.critical { color: ${palette.alert}; }
         /* The same 2px white rule as every border in the rice, between the
            text stats and the tray icons. Icons need less room than text,
            so the tray keeps only a few px on each side. */
-        #tray { border-left: 2px solid #ffffff; padding: 0 4px; }
+        #tray { border-left: 2px solid ${palette.border}; padding: 0 4px; }
         /* VGA has no Nix logo, so it comes from the Nerd Font, in the light
            blue of the NixOS logo. The Propo variant gives the icon its full
            width. The plain one squeezes it into a text cell and clips it.
            The glyph sits 1px low in its own box, so 2px of bottom padding
            centres it on the workspace numbers. */
-        #custom-nix { font-family: "DejaVuSansM Nerd Font Propo"; font-size: 20px; color: #7ebae4; padding: 0 6px 2px 6px; }
+        #custom-nix { font-family: "DejaVuSansM Nerd Font Propo"; font-size: 20px; color: ${palette.nix}; padding: 0 6px 2px 6px; }
         ${tooltipStyle}
         /* Tray right-click menus (each app's own menu, rendered by waybar
            through this same stylesheet) styled as fuzzel: opaque fill, 2px
            white border, square corners, 11pt, and the hovered row in
            reverse video like fuzzel's selection. */
-        menu { background: #20242c; border: 2px solid #ffffff; border-radius: 0; box-shadow: none; padding: 0; }
+        menu { background: ${palette.surface}; border: 2px solid ${palette.border}; border-radius: 0; box-shadow: none; padding: 0; }
         .popup decoration { border-radius: 0; box-shadow: none; }
-        menu menuitem { background: transparent; color: #ffffff; border-radius: 0; padding: 4px 12px; }
+        menu menuitem { background: transparent; color: ${palette.border}; border-radius: 0; padding: 4px 12px; }
         menu menuitem label { font-size: 11pt; }
-        menu menuitem:hover { background: #ffffff; color: #20242c; }
-        menu menuitem:disabled { color: #6c7380; }
-        menu separator { background: #ffffff; min-height: 2px; margin: 2px 0; }
+        menu menuitem:hover { background: ${palette.border}; color: ${palette.surface}; }
+        menu menuitem:disabled { color: ${palette.outline}; }
+        menu separator { background: ${palette.border}; min-height: 2px; margin: 2px 0; }
       '';
     };
   };
@@ -1085,9 +1086,9 @@ in
       settings = {
         border-size = 2;
         border-radius = 0;
-        border-color = "#ffffffff";
-        background-color = "#20242cff";
-        text-color = "#ffffffff";
+        border-color = "${palette.border}ff";
+        background-color = "${palette.surface}ff";
+        text-color = "${palette.border}ff";
         font = "VGA 11";
         width = 320;
         margin = "8";
@@ -1097,8 +1098,8 @@ in
         # reserved here for things that need to be acted on, not glanced at.
         default-timeout = 5000;
         "urgency=critical" = {
-          border-color = "#ff0000ff";
-          text-color = "#ff0000ff";
+          border-color = "${palette.alert}ff";
+          text-color = "${palette.alert}ff";
           default-timeout = 0;
         };
       };

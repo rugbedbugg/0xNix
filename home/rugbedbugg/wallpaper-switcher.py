@@ -39,12 +39,12 @@ BIG = (256, 144)
 SMALL = (160, 90)
 SLOTS = 5
 CSS = b"""
-* { font-family: "VGA", monospace; font-size: 11pt; color: #ffffff; }
-window { background: #20242c; }
-.slot { border: 2px solid #444444; background: #000000; }
-.slot.selected { border-color: #ffffff; }
+* { font-family: "VGA", monospace; font-size: 11pt; color: @border@; }
+window { background: @surface@; }
+.slot { border: 2px solid @outlineVariant@; background: @black@; }
+.slot.selected { border-color: @border@; }
 .slot.empty { border-color: transparent; background: transparent; }
-.dim { color: #8a8f99; }
+.dim { color: @textDim@; }
 """
 
 

@@ -4,12 +4,13 @@
   pkgs,
   pkgs-unstable,
   vars,
+  palette,
   ...
 }:
 let
   geometry = import ./overlay-geometry.nix { inherit (vars) screen; };
   screenrec = import ./screenrec.nix { inherit config pkgs; };
-  gtkTty = import ./gtk-tty.nix { inherit pkgs; };
+  gtkTty = import ./gtk-tty.nix { inherit pkgs palette; };
   # uwsm-app asks uwsm's resident app daemon for the launch command, which
   # takes ~30ms. `uwsm app` starts a Python process for every launch and
   # takes ~125ms.
@@ -270,12 +271,12 @@ in
         # Waybar's stat hues, with red first since it's the usual markup
         # colour. Keys 1 to 6 pick them in this order.
         color-palette.palette = [
-          "#ff0000"
-          "#e5c07b"
-          "#5fd7ff"
-          "#7ee787"
-          "#c792ea"
-          "#ffffff"
+          palette.alert
+          palette.disk
+          palette.cpu
+          palette.gpu
+          palette.memory
+          palette.border
         ];
       };
     };
@@ -314,7 +315,7 @@ in
           move = "${toString geometry.x} ${toString geometry.y}",
           rounding = 0,
           border_size = 2,
-          border_color = "rgba(ffffffee)",
+          border_color = "rgba(${palette.bare.border}ee)",
         })
       end
 

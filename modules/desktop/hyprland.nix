@@ -1,4 +1,9 @@
 {
+  lib,
+  palette,
+  ...
+}:
+{
   programs.hyprland = {
     enable = true;
     withUWSM = true;
@@ -20,10 +25,10 @@
         # ly's own compiled defaults are already white-on-default/bold-red-error;
         # declared explicitly so the palette is documented, not inherited.
         bg = "0x00000000";
-        fg = "0x00FFFFFF";
-        border_fg = "0x00FFFFFF";
+        fg = "0x00${lib.toUpper palette.bare.border}";
+        border_fg = "0x00${lib.toUpper palette.bare.border}";
         error_bg = "0x00000000";
-        error_fg = "0x01FF0000";
+        error_fg = "0x01${lib.toUpper palette.bare.alert}";
         # The one deliberate exception to this rice's no-animation rule.
         # ly-lock (github:rugbedbugg/ly-lock) reads these settings and shows
         # the same screen when the session is locked.
