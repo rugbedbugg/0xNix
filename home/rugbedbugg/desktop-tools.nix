@@ -1070,9 +1070,15 @@ in
         #custom-gpu { color: ${palette.gpu}; }
         #custom-battery.critical { color: ${palette.alert}; }
         /* The same 2px white rule as every border in the rice, between the
-           text stats and the tray icons. Icons need less room than text,
-           so the tray keeps only a few px on each side. */
-        #tray { border-left: 2px solid ${palette.border}; padding: 0 4px; }
+           text stats and the tray icons. It sits on the last text module
+           instead of the tray: waybar hides the tray while it has no icons,
+           at login before the apps register and whenever the last one
+           quits, and the rule went with it. A machine with no battery loses
+           the rule, since the battery script then prints nothing. Icons need
+           less room than text, so the tray keeps only a few px on each
+           side. */
+        #custom-battery { border-right: 2px solid ${palette.border}; }
+        #tray { padding: 0 4px; }
         /* VGA has no Nix logo, so it comes from the Nerd Font, in the light
            blue of the NixOS logo. The Propo variant gives the icon its full
            width. The plain one squeezes it into a text cell and clips it.
