@@ -43,7 +43,7 @@
     package = pkgs-unstable.btop;
     settings = {
       # Let the terminal's own background show through instead of btop
-      # painting its own, same as vim's oxide colour scheme.
+      # painting its own, same as vim's 0xNix colour scheme.
       theme_background = false;
     };
   };
