@@ -161,7 +161,7 @@ in
       # vim.lsp.enable. Neovim's own client does the rest.
       nvim-lspconfig
     ];
-    # Servers with no per-language devshell (devshells/default.nix) live on
+    # Servers with no per-language template (templates/) live on
     # Neovim's PATH only, so they never reach the shell's. Every other server
     # comes from the devshell of the project, through direnv.
     extraPackages = with pkgs-unstable; [

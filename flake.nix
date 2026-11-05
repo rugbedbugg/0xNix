@@ -81,5 +81,15 @@ apps = pkgsUnstable.buildEnv {
           ];
         };
       };
+      templates = {
+        ai = { path = ./templates/ai; description = "ai development environment"; };
+        bash = { path = ./templates/bash; description = "bash development environment"; };
+        cpp = { path = ./templates/cpp; description = "cpp development environment"; };
+        go = { path = ./templates/go; description = "go development environment"; };
+        node = { path = ./templates/node; description = "node development environment"; };
+        python = { path = ./templates/python; description = "python development environment"; };
+        rust = { path = ./templates/rust; description = "rust development environment"; };
+        systems = { path = ./templates/systems; description = "systems development environment"; };
+      };
     };
 }
