@@ -17,6 +17,7 @@
     ./wallpaper.nix
     ./git.nix
     ./gtk.nix
+    ./qt.nix
     ./nvim.nix
   ];
 
