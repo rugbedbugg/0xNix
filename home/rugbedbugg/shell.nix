@@ -4,6 +4,10 @@
     interactiveShellInit = ''
       set -g fish_greeting
       bind \ch backward-kill-word
+      # An empty DIRENV_LOG_FORMAT turns off direnv's loading, export and
+      # nix-direnv status lines. Errors still print. direnv.toml cannot do
+      # this, since it ignores an empty log_format.
+      set -gx DIRENV_LOG_FORMAT ""
     '';
     shellAbbrs = {
       ll = "ls -lah";
@@ -17,6 +21,11 @@
     enable = true;
     nix-direnv.enable = true;
     enableFishIntegration = true;
+    # Nix draws its download progress on a line it never ends. direnv's
+    # slow-command warning prints at the end of that line and ignores
+    # log_format. The warning fires after 5s by default, which a first-time
+    # devshell download often passes. Two minutes leaves it for real hangs.
+    config.global.warn_timeout = "2m";
   };
   # starship.toml: ◎ prompt, directory and git branch/status on the right,
   # git line counts above when they're nonzero. No Nerd Font icons — only
