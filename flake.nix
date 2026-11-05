@@ -75,6 +75,42 @@
     {
       nixosConfigurations.nixos = host;
       devShells.${system} = import ./devshells { inherit pkgs; };
+      # Per-project dev shells. Start one with `nix flake init -t ~/0xNix#python`
+      # and run `direnv allow`.
+      templates = {
+        python = {
+          path = ./templates/python;
+          description = "Python with uv, ruff and pyright";
+        };
+        go = {
+          path = ./templates/go;
+          description = "Go with gopls and delve";
+        };
+        bash = {
+          path = ./templates/bash;
+          description = "Bash with shellcheck and shfmt";
+        };
+        rust = {
+          path = ./templates/rust;
+          description = "Rust with cargo and rust-analyzer";
+        };
+        node = {
+          path = ./templates/node;
+          description = "Node.js with pnpm and TypeScript";
+        };
+        cpp = {
+          path = ./templates/cpp;
+          description = "C and C++ with gcc, cmake and gdb";
+        };
+        systems = {
+          path = ./templates/systems;
+          description = "LLVM, debuggers and tracers for systems work";
+        };
+        ai = {
+          path = ./templates/ai;
+          description = "CPU-first Python data science and PyTorch";
+        };
+      };
       formatter.${system} = pkgs.nixfmt;
       checks.${system} = import ./checks { inherit pkgs host vars; };
       packages.${system} = {

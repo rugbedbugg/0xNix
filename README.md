@@ -86,14 +86,20 @@ nix --extra-experimental-features 'nix-command flakes' build .#system --out-link
 
 ## Development environments
 
+Dev shells are per project. Generate one from a template inside the project
+directory:
+
 ```sh
-nix --extra-experimental-features 'nix-command flakes' develop .#python
+nix flake init -t ~/0xNix#python
+direnv allow
 ```
 
-- Available names: `default`, `python`, `go`, `bash`, `rust`, `node`, `cpp`,
-  `systems` and `ai`.
-- The experimental-feature flag is optional on the active system.
-- Each shell gets its packages from the same lock.
+- Available templates: `python`, `go`, `bash`, `rust`, `node`, `cpp`, `systems`
+  and `ai`.
+- Each template is a standalone `flake.nix` plus an `.envrc` with `use flake`.
+  The project locks its own nixpkgs.
+- This repo's own shell is `nix develop ~/0xNix`. It holds the Nix and shell
+  formatters and linters.
 - Python projects may use `uv` to maintain their own dependency lock and
   virtualenv.
 - Fish/direnv integration is configured. Each project's `.envrc` still needs

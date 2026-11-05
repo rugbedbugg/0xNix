@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Run inside the corresponding devShell, using temporary source/build files.
+# Run inside the matching template shell (nix develop path:templates/<suite>),
+# using temporary source/build files.
 set -euo pipefail
 
 suite=${1:?usage: toolchains.sh python|go|bash|rust|node|cpp|systems|ai}
