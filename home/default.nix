@@ -14,6 +14,7 @@
     ./media.nix
     ./files.nix
     ./wallpaper.nix
+    ./minimap.nix
     ./git.nix
     ./gtk.nix
     ./qt.nix

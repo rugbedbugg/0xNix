@@ -24,7 +24,10 @@ let
   y = bar + (screen.height - bar - height) / 2;
 in
 {
+  # The bar height is also read by the minimap (minimap.nix), which keeps
+  # its top slots clear of the bar.
   inherit
+    bar
     width
     height
     x
