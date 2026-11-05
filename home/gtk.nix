@@ -76,8 +76,14 @@ in
     # Without this the theme above would also be imported into GTK 4 apps,
     # where libadwaita restyles everything anyway.
     gtk4.theme = null;
+    # Chromium-based browsers take the GTK font for their own UI and for
+    # pages that ask for system-ui. They cannot draw the VGA bitmap font,
+    # so that text comes out blank. Big Blue Terminal is the same IBM look
+    # as an outline font. The Plus variant covers more Unicode than the
+    # strict CP437 one, which matters for tab titles and page text.
     font = {
-      name = "VGA";
+      name = "BigBlueTermPlus Nerd Font";
+      package = pkgs.nerd-fonts.bigblue-terminal;
       size = 11;
     };
     gtk3.extraCss = named;
