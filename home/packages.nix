@@ -22,6 +22,8 @@
       unzip
       openssl
       libreoffice-fresh
+      lorien
+      kdePackages.marknote
       lazygit
     ])
     ++ (with pkgs-unstable; [
