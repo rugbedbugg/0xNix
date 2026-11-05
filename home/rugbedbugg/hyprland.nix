@@ -65,6 +65,20 @@
     extraConfig = ''
       hl.bind("SUPER + Q", hl.dsp.window.close(), { description = "Close window" })
       hl.bind("SUPER + V", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating" })
+      -- Maximized fills the work area and leaves the bar on screen. Real
+      -- fullscreen would cover it.
+      hl.bind("SUPER + F", hl.dsp.window.fullscreen({ mode = "maximized" }), { description = "Maximize window" })
+
+      -- Some apps ask to be maximized once they are up. LibreOffice does it
+      -- when a document opens, and the window then covers the other tiles.
+      -- This drops those requests. SUPER + F above is not one, so it still
+      -- works. A rule on LibreOffice's own class had no effect in testing,
+      -- so this one matches every window.
+      hl.window_rule({
+        name = "suppress-maximize",
+        match = { class = ".*" },
+        suppress_event = "maximize",
+      })
       hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd("uwsm stop"), { description = "Log out" })
 
       for _, direction in ipairs({"left", "right", "up", "down"}) do

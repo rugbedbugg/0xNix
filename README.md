@@ -133,6 +133,7 @@ More bindings, using the plain desktop tools
 | Super + Y | Toggle the YouTube (youtube-tui) overlay |
 | Super + S | Toggle the scratch terminal overlay |
 | Ctrl + Shift + Esc | Toggle the btop overlay |
+| Super + F | Maximize the window. The bar stays visible |
 | Super + Shift + W | Wallpaper switcher |
 | Super + Shift + T | Minimap of the focused window. Drag to move, scroll to resize, right-click for a menu. Press again to close |
 | Super + Shift + arrows | Move window |
