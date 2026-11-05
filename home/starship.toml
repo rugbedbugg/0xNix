@@ -305,7 +305,9 @@ format = " nim [$symbol($version )]($style)"
 [nix_shell]
 style = 'bold italic dimmed blue'
 symbol = '✶'
-format = '[$symbol nix⎪$state⎪]($style) [$name](italic dimmed white)'
+# The trailing spaces set the mark apart from the git line counts that
+# follow it on the same row.
+format = '[$symbol nix⎪$state⎪]($style) [$name](italic dimmed white)    '
 impure_msg = '[⌽](bold dimmed red)'
 pure_msg = '[⌾](bold dimmed green)'
 unknown_msg = '[◌](bold dimmed yellow)'
