@@ -134,6 +134,7 @@ More bindings, using the plain desktop tools
 | Super + S | Toggle the scratch terminal overlay |
 | Ctrl + Shift + Esc | Toggle the btop overlay |
 | Super + Shift + W | Wallpaper switcher |
+| Super + Shift + T | Minimap of the focused window. Drag to move, scroll to resize, right-click for a menu. Press again to close |
 | Super + Shift + arrows | Move window |
 | Super + L | Lock session |
 | Ctrl + Alt + Delete | Session menu: lock, logout, suspend, reboot, shutdown. Logout, reboot and shutdown ask first. |
