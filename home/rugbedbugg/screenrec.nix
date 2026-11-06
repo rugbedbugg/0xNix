@@ -12,6 +12,7 @@ let
   # it. The toggle and the bar timer both read it.
   run = "$XDG_RUNTIME_DIR/screenrec";
   pactl = "${pkgs.pulseaudio}/bin/pactl";
+  flock = "${pkgs.util-linux}/bin/flock";
   # Starts or stops the timer bar in desktop-tools.nix.
   timerBar = action: "${pkgs.systemd}/bin/systemctl --user ${action} waybar-recording.service";
 in
@@ -25,9 +26,22 @@ in
   # null sink with the speaker monitor and the default mic looped into it,
   # recorded from its monitor and unloaded when the recording ends. None of
   # this changes the default sink or source.
+  #
+  # A lock serializes the steps before the recorder starts: the audio menu,
+  # the region pick and the pid write. A press that finds the lock taken
+  # cancels the region pick, like a second press closes the audio menu, and
+  # exits. The stop path comes before the lock, since a running recording
+  # holds none. The lock file sits outside the state directory, which is
+  # removed when a recording ends.
+  #
+  # An exit trap stops the recorder and unloads the temporary audio modules
+  # on any exit, including SIGTERM and SIGHUP. SIGKILL cannot be trapped.
   toggle = pkgs.writeShellScript "screenrec" ''
     run="${run}"
     pref="${config.xdg.stateHome}/screenrec-audio"
+    modules=()
+    recorder=
+    started=
 
     if [ -r "$run/pid" ] && kill -0 "$(< "$run/pid")" 2>/dev/null; then
       kill -INT "$(< "$run/pid")"
@@ -40,6 +54,38 @@ in
     if ${pkgs.procps}/bin/pkill -x fuzzel; then
       exit 0
     fi
+
+    exec 9> "$XDG_RUNTIME_DIR/screenrec.lock"
+    if ! ${flock} -n 9; then
+      ${pkgs.procps}/bin/pkill -x slurp
+      exit 0
+    fi
+
+    cleanup() {
+      if [ -n "$recorder" ]; then
+        kill -INT "$recorder" 2>/dev/null
+        wait "$recorder" 2>/dev/null
+        recorder=
+      fi
+      if [ -n "$started" ]; then
+        ${timerBar "stop"}
+        ${pkgs.coreutils}/bin/rm -rf "$run"
+        started=
+      fi
+      for module in "''${modules[@]}"; do
+        ${pactl} unload-module "$module"
+      done
+      modules=()
+    }
+    trap cleanup EXIT
+    trap 'exit 143' TERM HUP
+
+    # Load one audio module and remember it for cleanup.
+    load() {
+      local id
+      id=$(${pactl} load-module "$@") || return 1
+      modules+=("$id")
+    }
 
     last=$(cat "$pref" 2>/dev/null) || last="No audio"
     choice=$(printf '%s\n' "No audio" "System audio" "Microphone" "System + mic" \
@@ -68,7 +114,6 @@ in
       area="Full screen"
     fi
 
-    modules=()
     case "$choice" in
       "System audio")
         set -- "$@" --audio --audio-device @DEFAULT_MONITOR@
@@ -77,9 +122,12 @@ in
         set -- "$@" --audio
         ;;
       "System + mic")
-        modules+=("$(${pactl} load-module module-null-sink sink_name=screenrec-mix sink_properties=device.description=screenrec-mix)")
-        modules+=("$(${pactl} load-module module-loopback source=@DEFAULT_MONITOR@ sink=screenrec-mix latency_msec=20)")
-        modules+=("$(${pactl} load-module module-loopback source=@DEFAULT_SOURCE@ sink=screenrec-mix latency_msec=20)")
+        if ! { load module-null-sink sink_name=screenrec-mix sink_properties=device.description=screenrec-mix \
+          && load module-loopback source=@DEFAULT_MONITOR@ sink=screenrec-mix latency_msec=20 \
+          && load module-loopback source=@DEFAULT_SOURCE@ sink=screenrec-mix latency_msec=20; }; then
+          ${pkgs.libnotify}/bin/notify-send -u critical "Recording failed" "PulseAudio refused the audio mix"
+          exit 0
+        fi
         set -- "$@" --audio --audio-device screenrec-mix.monitor
         ;;
     esac
@@ -90,21 +138,23 @@ in
 
     # The Radeon encoder has no low-power mode. Asking for it only fails
     # and falls back with a warning.
-    ${pkgs.wl-screenrec}/bin/wl-screenrec --low-power=off "$@" -f "$file" &
-    echo $! > "$run/pid"
+    # The recorder closes the lock's descriptor, or it would hold the lock
+    # for the whole recording.
+    ${pkgs.wl-screenrec}/bin/wl-screenrec --low-power=off "$@" -f "$file" 9>&- &
+    recorder=$!
+    started=1
+    echo "$recorder" > "$run/pid"
     echo "$file" > "$run/file"
     printf '%s\t%s\n' File "''${file##*/}" Area "$area" Audio "$choice" Encoder "$encoder" > "$run/info"
     ${pkgs.coreutils}/bin/date +%s > "$run/start"
     ${timerBar "start"}
-    wait $!
+    exec 9>&-
+    wait "$recorder"
+    recorder=
 
     # The timer leaves the screen before the toast shows up. The short
     # sleep covers the bar's closing animation.
-    ${timerBar "stop"}
-    ${pkgs.coreutils}/bin/rm -rf "$run"
-    for module in "''${modules[@]}"; do
-      ${pactl} unload-module "$module"
-    done
+    cleanup
     ${pkgs.coreutils}/bin/sleep 0.2
     if [ ! -s "$file" ]; then
       ${pkgs.coreutils}/bin/rm -f "$file"
