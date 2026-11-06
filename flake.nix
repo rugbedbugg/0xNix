@@ -22,6 +22,9 @@
       pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
       pkgsUnstable = import inputs.nixpkgs-unstable { inherit system; config.allowUnfree = true; };
       aws-agent-toolkit = inputs.aws-agent-toolkit or null;
+profileEnv =
+        args:
+        (pkgsUnstable.buildEnv args).overrideAttrs { disallowedRequisites = [ pkgsUnstable.qt6.qtbase ]; };
 asm-exec = pkgsUnstable.writeShellApplication {
         name = "asm-exec";
         runtimeInputs = [
@@ -46,7 +49,7 @@ asm-exec = pkgsUnstable.writeShellApplication {
       formatter.${system} = pkgs.nixfmt;
       devShells.${system} = import ./devshells { inherit pkgs; };
       packages.${system} = {
-agents = pkgsUnstable.buildEnv {
+agents = profileEnv {
           name = "agents";
           paths = with pkgsUnstable; [
             claude-code
@@ -60,7 +63,7 @@ agents = pkgsUnstable.buildEnv {
             python3
           ];
         };
-apps = pkgsUnstable.buildEnv {
+apps = profileEnv {
           name = "apps";
           paths = with pkgsUnstable; [
             vesktop
