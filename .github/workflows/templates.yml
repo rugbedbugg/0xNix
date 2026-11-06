@@ -1,0 +1,35 @@
+# Each project template is a standalone flake with its own toolchain. It has
+# no lockfile, so it follows nixos-unstable and can break without any change
+# here. The weekly run catches that. A push or pull request runs the suites
+# only when a template or the smoke test changes. The largest shell (ai) is
+# about 2 GiB unpacked and comes from the public cache.
+name: Templates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "templates/**"
+      - "checks/toolchains.sh"
+      - ".github/workflows/templates.yml"
+  pull_request:
+    paths:
+      - "templates/**"
+      - "checks/toolchains.sh"
+      - ".github/workflows/templates.yml"
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  toolchains:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [python, go, bash, rust, node, cpp, systems, ai]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+      - name: Run the ${{ matrix.suite }} smoke test
+        run: nix develop path:templates/${{ matrix.suite }} --command bash checks/toolchains.sh ${{ matrix.suite }}
