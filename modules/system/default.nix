@@ -1,4 +1,7 @@
-{ pkgs, ... }:
+{ pkgs, vars, ... }:
+let
+  locale = vars.locale or "en_IN";
+in
 {
   imports = [
     ./boot-baseline.nix
@@ -7,18 +10,18 @@
 
   networking.networkmanager.enable = true;
   networking.firewall.enable = true;
-  time.timeZone = "Asia/Kolkata";
-  i18n.defaultLocale = "en_IN";
+  time.timeZone = vars.timeZone or "Asia/Kolkata";
+  i18n.defaultLocale = locale;
   i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_IN";
-    LC_IDENTIFICATION = "en_IN";
-    LC_MEASUREMENT = "en_IN";
-    LC_MONETARY = "en_IN";
-    LC_NAME = "en_IN";
-    LC_NUMERIC = "en_IN";
-    LC_PAPER = "en_IN";
-    LC_TELEPHONE = "en_IN";
-    LC_TIME = "en_IN";
+    LC_ADDRESS = locale;
+    LC_IDENTIFICATION = locale;
+    LC_MEASUREMENT = locale;
+    LC_MONETARY = locale;
+    LC_NAME = locale;
+    LC_NUMERIC = locale;
+    LC_PAPER = locale;
+    LC_TELEPHONE = locale;
+    LC_TIME = locale;
   };
   services.xserver.xkb = {
     layout = "us";

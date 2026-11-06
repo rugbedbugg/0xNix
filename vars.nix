@@ -10,8 +10,12 @@
   # untracked ~/.config/git/identity file.
   gitName = "rugbedbugg";
   # Tailscale address of the paired phone. It is the only peer allowed to
-  # reach KDE Connect (modules/system/tailscale.nix).
+  # reach KDE Connect (modules/system/tailscale.nix). Null closes those
+  # ports.
   phoneAddress = "100.67.86.76";
+  timeZone = "Asia/Kolkata";
+  # Default locale and every LC_ category (modules/system/default.nix).
+  locale = "en_IN";
   # Logical resolution of the main display, after scaling. The floating
   # overlays and the special-workspace bar are laid out from it in pixels
   # (home/rugbedbugg/overlay-geometry.nix).
