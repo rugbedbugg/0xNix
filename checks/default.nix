@@ -105,6 +105,23 @@ in
     inherit pkgs home;
     system = cfg.system.build.toplevel;
   };
+  # The Python scripts hold @name@ placeholders inside string literals, so
+  # they compile and lint as they are in the tree.
+  python-scripts =
+    pkgs.runCommand "python-scripts-check"
+      {
+        nativeBuildInputs = [
+          pkgs.python3
+          pkgs.ruff
+        ];
+      }
+      ''
+        files="${../home/rugbedbugg/minimap.py} ${../home/rugbedbugg/wallpaper-switcher.py} ${../scripts/prepare-runtime-test.py}"
+        export PYTHONPYCACHEPREFIX="$TMPDIR/pycache"
+        python -m py_compile $files
+        ruff check --no-cache $files
+        touch "$out"
+      '';
   desktop-config =
     pkgs.runCommand "desktop-config-check"
       {
