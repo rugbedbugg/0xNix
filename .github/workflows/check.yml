@@ -1,6 +1,11 @@
-# Evaluate every flake output and check formatting. Building the full
-# system is too heavy for a hosted runner, so this stops at evaluation.
+# The check job evaluates every flake output and checks formatting. Building
+# the full system is too heavy for a hosted runner, so it stops at evaluation.
 # That still runs the configuration-safety assertions in checks/.
+#
+# The desktop-config job builds the one check that runs the desktop tools:
+# the Lua parse, the Waybar JSON and Hyprland's own config verification. Its
+# inputs are about 5 GiB unpacked and come from the public cache. The qt-theme
+# check needs the whole system closure and stays local.
 name: Check
 
 on:
@@ -19,3 +24,11 @@ jobs:
         run: nix fmt -- --check $(git ls-files '*.nix' ':!hosts/nixos/hardware-configuration.nix')
       - name: Evaluate the flake
         run: nix flake check --no-build
+
+  desktop-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+      - name: Build the desktop config check
+        run: nix build --no-link .#checks.x86_64-linux.desktop-config
