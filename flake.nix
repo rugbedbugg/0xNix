@@ -66,22 +66,24 @@
           exec python3 ${aws-agent-toolkit}/plugins/aws-core/skills/aws-secrets-manager/references/asm-exec "$@"
         '';
       };
+      hostSpecialArgs = {
+        pkgs-unstable = pkgsUnstable;
+        inherit vars palette;
+      };
+      hostModules = [
+        # The commit this system was built from, which the bar's Nix
+        # tooltip reads. A build from a dirty tree gets the commit with
+        # "-dirty" on the end.
+        { system.configurationRevision = self.rev or self.dirtyRev or null; }
+        home-manager.nixosModules.home-manager
+        ly-lock.nixosModules.default
+        aurora.nixosModules.default
+        ./hosts/nixos
+      ];
       host = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = {
-          pkgs-unstable = pkgsUnstable;
-          inherit vars palette;
-        };
-        modules = [
-          # The commit this system was built from, which the bar's Nix
-          # tooltip reads. A build from a dirty tree gets the commit with
-          # "-dirty" on the end.
-          { system.configurationRevision = self.rev or self.dirtyRev or null; }
-          home-manager.nixosModules.home-manager
-          ly-lock.nixosModules.default
-          aurora.nixosModules.default
-          ./hosts/nixos
-        ];
+        specialArgs = hostSpecialArgs;
+        modules = hostModules;
       };
     in
     {
@@ -124,7 +126,15 @@
         };
       };
       formatter.${system} = pkgs.nixfmt;
-      checks.${system} = import ./checks { inherit pkgs host vars; };
+      checks.${system} = import ./checks {
+        inherit
+          pkgs
+          host
+          hostModules
+          hostSpecialArgs
+          vars
+          ;
+      };
       packages.${system} = {
         system = host.config.system.build.toplevel;
         home = host.config.home-manager.users.${vars.username}.home.activationPackage;

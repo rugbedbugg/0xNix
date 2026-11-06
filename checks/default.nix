@@ -1,6 +1,8 @@
 {
   pkgs,
   host,
+  hostModules,
+  hostSpecialArgs,
   vars,
 }:
 let
@@ -104,6 +106,14 @@ in
   qt-theme = import ./qt-theme.nix {
     inherit pkgs home;
     system = cfg.system.build.toplevel;
+  };
+  vm = import ./vm.nix {
+    inherit
+      pkgs
+      hostModules
+      hostSpecialArgs
+      vars
+      ;
   };
   # The Python scripts hold @name@ placeholders inside string literals, so
   # they compile and lint as they are in the tree.
