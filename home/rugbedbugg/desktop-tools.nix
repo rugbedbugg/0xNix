@@ -1437,6 +1437,11 @@ in
         background-color = "${palette.surface}ff";
         text-color = "${palette.border}ff";
         font = "VGA 11";
+        # The default top layer sits below the minimap's overlay layer, so
+        # the minimap would cover the toasts. On overlay they share its
+        # layer, and minimap.nix keeps the minimap under them. They also
+        # show above fullscreen windows.
+        layer = "overlay";
         width = 320;
         margin = "8";
         padding = "8";

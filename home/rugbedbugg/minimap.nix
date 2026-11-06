@@ -74,6 +74,13 @@ in
       -- Its namespace is "minimap". It is not hidden from screenshots and
       -- recordings, since it shows what was chosen to be shown. A layer rule
       -- with no_screen_share on that namespace would mask it.
+      --
+      -- It shares the overlay layer with mako's toasts. There the surface
+      -- mapped last draws on top, so a toast already showing when the minimap
+      -- opens would end up under it (confirmed live). Hyprland draws a
+      -- layer's surfaces in descending order, so 1 keeps the minimap under
+      -- every other overlay surface.
+      hl.layer_rule({ name = "minimap-below-overlays", match = { namespace = "^minimap$" }, order = 1 })
       hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd("${toggle}"), { description = "Minimap of the focused window" })
     '';
   };
