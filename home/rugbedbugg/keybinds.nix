@@ -143,7 +143,7 @@ let
   # — confirmed live ("dispatch in lua is a shorthand for hl.dispatch(...),
   # your syntax might need to be updated"); `hl.dsp.workspace.toggle_special`
   # is the confirmed-working call. The label bar above the window is driven
-  # entirely by Hyprland's own IPC events (desktop-tools.nix), not by this
+  # entirely by Hyprland's own IPC events (waybar-side-bars.nix), not by this
   # script — so it stays correct however the workspace gets hidden.
   #
   # Whenever this shows the workspace, the app's window also gets keyboard
@@ -341,7 +341,7 @@ in
       -- Floating, centered, fuzzel-styled overlays for every special
       -- workspace, Vesktop and ZapFast included. Size and position come from
       -- overlay-geometry.nix, which also places the special-workspace
-      -- label bar in desktop-tools.nix. The lf file chooser (files.nix)
+      -- label bar in waybar-side-bars.nix. The lf file chooser (files.nix)
       -- and the satty screenshot editor get the same frame but open on
       -- whatever workspace is in front.
       for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "filechooser", "com\\.gabm\\.satty"}) do
