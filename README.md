@@ -33,7 +33,28 @@ Waybar tooltips for CPU, RAM, swap, disk, GPU and battery:
 
 ## Use it on your machine
 
-1. Edit [`vars.nix`](vars.nix). It holds the username, hostname, login display name, commit author name, the Tailscale address of the paired phone and screen resolution. Every module reads these values from there.
+### Setup wizard
+
+Run the wizard on a NixOS system as your own user:
+
+```sh
+scripts/setup.sh
+```
+
+- It asks for the username, hostname, login display name, commit author name, phone address, time zone, locale and screen size. It also asks for your git email and GPG key.
+- Every question shows its current value. Enter keeps it.
+- It prints a summary and writes nothing until you confirm.
+- The email and key go to `~/.config/git/identity` only. Enter `none` for the key to turn commit signing off.
+- It keeps `hosts/nixos/hardware-configuration.nix` when it already matches the root filesystem. Otherwise it offers a new scan and defaults to no.
+- It offers to build the system and then to switch. The switch asks for sudo.
+- It never offers the switch while the hardware file names another machine's disk. It also withholds the switch when the new username differs from your login, because the new account has no password yet. It prints the reason and the manual command.
+- `--defaults` accepts every default, rewrites `vars.nix` and stops.
+
+The manual steps below do the same by hand.
+
+### Manual steps
+
+1. Edit [`vars.nix`](vars.nix). It holds the username, hostname, login display name, commit author name, the Tailscale address of the paired phone, the time zone, the locale and the screen resolution. Every module reads these values from there. Set the phone address to `null` to close the KDE Connect ports.
 2. Replace `hosts/nixos/hardware-configuration.nix` with your own:
 
    ```sh
