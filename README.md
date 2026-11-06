@@ -33,7 +33,7 @@ Waybar tooltips for CPU, RAM, swap, disk, GPU and battery:
 
 ## Use it on your machine
 
-1. Edit [`vars.nix`](vars.nix). It holds the username, hostname, login display name, commit author name and screen resolution. Every module reads these values from there.
+1. Edit [`vars.nix`](vars.nix). It holds the username, hostname, login display name, commit author name, the Tailscale address of the paired phone and screen resolution. Every module reads these values from there.
 2. Replace `hosts/nixos/hardware-configuration.nix` with your own:
 
    ```sh
@@ -64,11 +64,16 @@ Waybar tooltips for CPU, RAM, swap, disk, GPU and battery:
 6. Install the frequently updated packages into your user profile. They are separate flake outputs. The switch does not install them. The Edge and Vesktop keybinds start their binaries from `~/.nix-profile/bin`.
 
    ```sh
-   nix profile add .#agents .#apps
-   ls ~/.nix-profile/bin/microsoft-edge ~/.nix-profile/bin/vesktop
+   scripts/install-profiles.sh
    ```
 
-   `ls` prints both paths when the install worked. Update them later with `nix flake update nixpkgs-unstable` followed by `nix profile upgrade --all`.
+   The script skips a package that is already installed. It ends by checking `~/.nix-profile/bin/microsoft-edge` and `~/.nix-profile/bin/vesktop`. Run it again after any failed install. Update the packages later with `nix flake update nixpkgs-unstable` followed by `nix profile upgrade --all`.
+
+7. Restore the state that stays outside the repository. Nothing here is automated on purpose.
+
+   - Import the GPG signing key whose fingerprint is in the git identity file.
+   - Authenticate Tailscale with `sudo tailscale up`.
+   - Sign in to Edge, Vesktop, Codex and Claude Code. Each keeps its own account state.
 
 Keep private values such as your email out of `vars.nix`. It is committed and ends up in the world-readable Nix store. Put them in a runtime file like the git identity file instead.
 
@@ -81,6 +86,10 @@ nix --extra-experimental-features 'nix-command flakes' flake check --max-jobs 2 
 nix --extra-experimental-features 'nix-command flakes' build .#system --out-link result-system --max-jobs 2 --cores 2
 ```
 
+- `flake check` also boots the whole system in a QEMU VM and checks the
+  units, the user, the Home Manager activation and the core executables. It
+  needs `/dev/kvm`. Run only that test with
+  `nix build .#checks.x86_64-linux.vm -L`.
 - These commands write build results to the Nix store and a local result
   symlink. They do not change the active system, user configuration,
   bootloader or EFI files.
@@ -107,6 +116,10 @@ direnv allow
   and `ai`.
 - Each template is a standalone `flake.nix` plus an `.envrc` with `use flake`.
   The project locks its own nixpkgs.
+- Templates track `nixos-unstable` and carry no lockfile. The first
+  `direnv allow` in a project locks the toolchains of that day. Two projects
+  created on different days can get different versions. Commit the generated
+  `flake.lock` to keep a project reproducible.
 - This repo's own shell is `nix develop ~/0xNix`. It holds the Nix and shell
   formatters and linters.
 - Python projects may use `uv` to maintain their own dependency lock and
