@@ -1,8 +1,10 @@
 # The agents and apps profiles come from nixpkgs-unstable and are installed
-# outside the system closure. The weekly run builds both so a broken package
-# shows up before the next `nix profile upgrade`. The closures are about 2 GiB
-# (agents) and 4 GiB (apps) unpacked. Chrome and Edge are unfree, so they are
-# fetched from the vendors instead of the public cache.
+# outside the system closure. The weekly run updates that input first, as the
+# upgrade steps in flake.nix do, then builds both profiles. A broken package
+# shows up before the next `nix profile upgrade`. The updated lock stays in
+# the job. The closures are about 2 GiB (agents) and 4 GiB (apps) unpacked.
+# Unfree packages are not in the public cache, so the job fetches or builds
+# them.
 name: Profiles
 
 on:
@@ -20,5 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
+      - name: Follow the latest nixpkgs-unstable
+        run: nix flake update nixpkgs-unstable
       - name: Build the ${{ matrix.profile }} profile
         run: nix build --no-link .#packages.x86_64-linux.${{ matrix.profile }}
