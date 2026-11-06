@@ -357,19 +357,28 @@ class Minimap:
         data = out.get_data()
         if data[:2] != b"P6":
             return None
+        # A truncated or garbled header must end the scan and return None.
+        # An exception here would skip the timer in captured() and freeze
+        # the minimap.
         fields = []
         offset = 2
+        size = len(data)
         while len(fields) < 3:
-            while data[offset : offset + 1].isspace():
+            while offset < size and data[offset : offset + 1].isspace():
                 offset += 1
             end = offset
-            while not data[end : end + 1].isspace():
+            while end < size and not data[end : end + 1].isspace():
                 end += 1
+            if end == size or not data[offset:end].isdigit():
+                return None
             fields.append(int(data[offset:end]))
             offset = end
         offset += 1
-        width, height, _ = fields
-        if len(data) - offset < width * height * 3:
+        width, height, maxval = fields
+        # The stride below assumes 8-bit samples.
+        if width == 0 or height == 0 or maxval != 255:
+            return None
+        if size - offset < width * height * 3:
             return None
         body = GLib.Bytes.new_from_bytes(out, offset, width * height * 3)
         return GdkPixbuf.Pixbuf.new_from_bytes(
