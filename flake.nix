@@ -13,6 +13,11 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Partitions and formats the disk of a fresh install (hosts/fresh).
+    disko = {
+      url = "github:nix-community/disko/cedd626e11b635470fa6f9fdb8ad79b0075dd7f9";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     aws-agent-toolkit = {
       url = "github:aws/agent-toolkit-for-aws/7fcb1da17abba610d7becc973c2141b40412e02c";
       flake = false;
@@ -33,6 +38,7 @@
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
+      disko,
       aws-agent-toolkit,
       ly-lock,
       aurora,
@@ -70,7 +76,7 @@
         pkgs-unstable = pkgsUnstable;
         inherit vars palette;
       };
-      hostModules = [
+      commonModules = [
         # The commit this system was built from, which the bar's Nix
         # tooltip reads. A build from a dirty tree gets the commit with
         # "-dirty" on the end.
@@ -78,7 +84,11 @@
         home-manager.nixosModules.home-manager
         ly-lock.nixosModules.default
         aurora.nixosModules.default
-        ./hosts/nixos
+      ];
+      hostModules = commonModules ++ [ ./hosts/nixos ];
+      freshModules = commonModules ++ [
+        disko.nixosModules.disko
+        ./hosts/fresh
       ];
       host = nixpkgs.lib.nixosSystem {
         inherit system;
@@ -87,7 +97,16 @@
       };
     in
     {
-      nixosConfigurations.nixos = host;
+      nixosConfigurations = {
+        nixos = host;
+        # A machine installed from this flake onto an empty disk. Unlike
+        # nixos, it has no pinned storage layout.
+        fresh = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = hostSpecialArgs;
+          modules = freshModules;
+        };
+      };
       devShells.${system} = import ./devshells { inherit pkgs; };
       # Per-project dev shells. Start one with `nix flake init -t ~/0xNix#python`
       # and run `direnv allow`.
@@ -129,8 +148,10 @@
       checks.${system} = import ./checks {
         inherit
           pkgs
+          disko
           host
           hostModules
+          freshModules
           hostSpecialArgs
           vars
           ;

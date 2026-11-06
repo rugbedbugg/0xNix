@@ -1,7 +1,9 @@
 {
   pkgs,
   host,
+  disko,
   hostModules,
+  freshModules,
   hostSpecialArgs,
   vars,
 }:
@@ -108,13 +110,16 @@ in
     system = cfg.system.build.toplevel;
   };
   vm = import ./vm.nix {
-    inherit
-      pkgs
-      hostModules
-      hostSpecialArgs
-      vars
-      ;
+    inherit pkgs hostSpecialArgs vars;
+    name = "vm";
+    modules = hostModules;
   };
+  vm-fresh = import ./vm.nix {
+    inherit pkgs hostSpecialArgs vars;
+    name = "vm-fresh";
+    modules = freshModules;
+  };
+  disk-layout = import ./disk-layout.nix { inherit pkgs disko; };
   # The Python scripts hold @name@ placeholders inside string literals, so
   # they compile and lint as they are in the tree.
   python-scripts =

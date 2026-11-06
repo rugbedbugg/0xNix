@@ -8,9 +8,9 @@
 # - an expected executable missing from the user profile or the system path
 # - the display manager or Tailscale daemon not running
 #
-# The test reuses the host's own module list. The VM module replaces the
-# laptop's UUID filesystems and the boot loader, so hardware-configuration.nix
-# stays untouched. The graphical session is out of scope. A Hyprland login in
+# The test reuses the module list of the host it checks. The VM module
+# replaces that host's filesystems and boot loader. For the laptop that
+# leaves hardware-configuration.nix untouched. The graphical session is out of scope. A Hyprland login in
 # a headless VM is too flaky to gate on, so the test stops at the units that
 # start it.
 #
@@ -22,12 +22,13 @@
 #   nix build .#checks.x86_64-linux.vm --max-jobs 2 --cores 2 -L
 {
   pkgs,
-  hostModules,
+  name,
+  modules,
   hostSpecialArgs,
   vars,
 }:
 pkgs.testers.runNixOSTest {
-  name = "0xnix-vm";
+  name = "0xnix-${name}";
 
   # The host sets nixpkgs.config.allowUnfree itself, which a read-only test
   # nixpkgs would reject.
@@ -37,7 +38,7 @@ pkgs.testers.runNixOSTest {
   nodes.machine =
     { ... }:
     {
-      imports = hostModules;
+      imports = modules;
       virtualisation = {
         memorySize = 4096;
         cores = 2;
