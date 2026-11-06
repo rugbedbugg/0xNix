@@ -72,8 +72,8 @@ UNKNOWN = (16, 9)
 
 CSS = b"""
 * { font-family: "VGA", monospace; font-size: 11pt; }
-menu { background: @surface@; border: 2px solid @border@; border-radius: 0; padding: 0; }
-menuitem { color: @border@; padding: 4px 12px; }
+menu { background: @surface@; border: 2px solid @border@; border-radius: 0; box-shadow: none; padding: 0; }
+menuitem { background: transparent; color: @border@; border-radius: 0; margin: 0; box-shadow: none; padding: 4px 12px; }
 menuitem:hover { background: @text@; color: @surface@; }
 .csd.popup decoration, window.popup decoration { box-shadow: none; border-radius: 0; margin: 0; }
 """
