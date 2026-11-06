@@ -100,6 +100,10 @@ in
   configuration-safety = pkgs.writeText "configuration-safety.json" (builtins.toJSON safety);
   system = cfg.system.build.toplevel;
   home = home.home.activationPackage;
+  qt-theme = import ./qt-theme.nix {
+    inherit pkgs home;
+    system = cfg.system.build.toplevel;
+  };
   desktop-config =
     pkgs.runCommand "desktop-config-check"
       {

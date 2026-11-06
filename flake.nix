@@ -45,6 +45,12 @@
         inherit system;
         config.allowUnfree = true;
       };
+      # buildEnv for the profile packages. Its build fails when Qt is in the
+      # closure. buildEnv rejects extra arguments, so this goes through
+      # overrideAttrs.
+      profileEnv =
+        args:
+        (pkgsUnstable.buildEnv args).overrideAttrs { disallowedRequisites = [ pkgsUnstable.qt6.qtbase ]; };
       asm-exec = pkgsUnstable.writeShellApplication {
         name = "asm-exec";
         runtimeInputs = [
@@ -122,7 +128,16 @@
         #   nix flake update nixpkgs-unstable --flake ~/0xNix
         #   nix profile upgrade --all
         # Install once with `nix profile add ~/0xNix#agents ~/0xNix#apps`.
-        agents = pkgsUnstable.buildEnv {
+        #
+        # Neither package may contain Qt. The Qt theme (home/rugbedbugg/qt.nix)
+        # only applies to apps built against the same Qt as its plugin, and
+        # this set usually carries a newer one. A Qt app here would lose the
+        # theme without any error. `nix profile add` and `nix profile upgrade`
+        # fail instead, and the old profile stays in place. Move the Qt app to
+        # home/rugbedbugg/packages.nix. A browser that starts bundling Qt fails
+        # the same way, so wait for it to drop it or pin that package to the
+        # stable set.
+        agents = profileEnv {
           name = "agents";
           paths = with pkgsUnstable; [
             claude-code
@@ -139,7 +154,7 @@
         };
         # Keybinds launch vesktop and microsoft-edge from ~/.nix-profile/bin,
         # so they need this installed.
-        apps = pkgsUnstable.buildEnv {
+        apps = profileEnv {
           name = "apps";
           paths = with pkgsUnstable; [
             vesktop
