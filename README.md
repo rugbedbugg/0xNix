@@ -88,8 +88,8 @@ nix --extra-experimental-features 'nix-command flakes' build .#system --out-link
 
 - `flake check` also boots the whole system in a QEMU VM and checks the
   units, the user, the Home Manager activation and the core executables. It
-  needs `/dev/kvm`. Run only that test with
-  `nix build .#checks.x86_64-linux.vm -L`.
+  does the same for the fresh install host. It needs `/dev/kvm`. Run only
+  the laptop test with `nix build .#checks.x86_64-linux.vm -L`.
 - These commands write build results to the Nix store and a local result
   symlink. They do not change the active system, user configuration,
   bootloader or EFI files.
@@ -101,6 +101,22 @@ nix --extra-experimental-features 'nix-command flakes' build .#system --out-link
 - The first permanent activation is complete. Do not rerun its one-time helper.
 - Future activations still require build/test validation and a check of any
   EFI writes.
+
+## Fresh install host
+
+`.#fresh` is a second host for a machine that starts from an empty disk. It
+shares the desktop, Home Manager and user modules with `.#nixos`. It has its
+own hostname, `nixos-fresh`. It uses no hardware scan and no pinned storage
+layout. [`hosts/fresh/disk-layout.nix`](hosts/fresh/disk-layout.nix) declares
+a 512M EFI partition and an ext4 root through disko.
+
+- The `fresh.disk` option names the disk that disko wipes. It defaults to
+  `/dev/vda`, the first disk of a virtual machine. A physical machine needs a
+  dedicated disk set in [`hosts/fresh/disk-config.nix`](hosts/fresh/disk-config.nix).
+  Never use the disk of the `.#nixos` laptop.
+- Two checks cover it. `vm-fresh` boots the full system. `disk-layout`
+  partitions an empty disk, installs a minimal system and boots it.
+- Only these VM tests have run. No physical machine has been installed this way.
 
 ## Development environments
 
