@@ -44,6 +44,9 @@
   security.polkit.enable = true;
   # Installs ly-lock and its PAM service.
   programs.ly-lock.enable = true;
+  # Installs Aurora, the EvoFox Blaze mouse configuration tool, and the udev
+  # rule that lets the logged in user open the mouse without root.
+  programs.aurora.enable = true;
 
   # ZapFast and other secret-keeping apps read their archive key from here.
   # The ly PAM service unlocks the login keyring with the session password.

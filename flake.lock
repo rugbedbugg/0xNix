@@ -1,5 +1,25 @@
 {
   "nodes": {
+    "aurora": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793885929,
+        "narHash": "sha256-XRaAkxSg0A82+cp+yIXtM8BpjHpu0l25K7VY+4daIeg=",
+        "owner": "rugbedbugg",
+        "repo": "aurora",
+        "rev": "7758da05928a9a5c761e6d35351bf429a247b062",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rugbedbugg",
+        "repo": "aurora",
+        "type": "github"
+      }
+    },
     "aws-agent-toolkit": {
       "flake": false,
       "locked": {
@@ -92,6 +112,7 @@
     },
     "root": {
       "inputs": {
+        "aurora": "aurora",
         "aws-agent-toolkit": "aws-agent-toolkit",
         "home-manager": "home-manager",
         "ly-lock": "ly-lock",

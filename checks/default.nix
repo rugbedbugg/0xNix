@@ -94,6 +94,7 @@ let
     assert cfg.programs.hyprland.withUWSM;
     assert !home.wayland.windowManager.hyprland.systemd.enable;
     assert cfg.security.pam.services ? ly-lock;
+    assert cfg.programs.aurora.enable;
     protected;
 in
 {

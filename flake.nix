@@ -21,6 +21,10 @@
       url = "github:rugbedbugg/ly-lock";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    aurora = {
+      url = "github:rugbedbugg/aurora";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -31,6 +35,7 @@
       home-manager,
       aws-agent-toolkit,
       ly-lock,
+      aurora,
       ...
     }:
     let
@@ -74,6 +79,7 @@
           { system.configurationRevision = self.rev or self.dirtyRev or null; }
           home-manager.nixosModules.home-manager
           ly-lock.nixosModules.default
+          aurora.nixosModules.default
           ./hosts/nixos
         ];
       };
