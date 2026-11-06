@@ -53,7 +53,8 @@ let
     # The empty slot behind a wallpaper preview.
     black = "#000000";
 
-    # Reserved for states that need action: errors, deletions, live mic.
+    # Reserved for states that need action: errors, deletions, live mic. The
+    # location marker on the clock's world map is the one other use.
     alert = "#e06c75";
 
     # Diff backgrounds: each hue blended over the surface colour. Green and

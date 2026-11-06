@@ -1092,7 +1092,7 @@ let
         echo "$map"
       )
       jq -cn --arg text "$text" --arg tooltip "$tooltip" \
-        --arg mark "${palette.cpu}" --arg bg "${palette.text}" --arg fg "${palette.surface}" '{
+        --arg mark "${palette.alert}" --arg bg "${palette.text}" --arg fg "${palette.surface}" '{
           text: $text,
           tooltip: ($tooltip | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")
             | gsub("\u0001"; "<span foreground=\"" + $mark + "\">") | gsub("\u0002"; "</span>")
@@ -1107,11 +1107,17 @@ let
   # NixOS release, the nixpkgs and flake commits behind it, the Nix version
   # and the system generation. `nixos-rebuild test` doesn't add a
   # generation, so the tooltip says so when the running system isn't the
-  # newest one. The Config row reads system.configurationRevision
+  # newest one. The Built against row reads system.configurationRevision
   # (flake.nix).
   nixStatus = pkgs.writeShellScript "waybar-nix" ''
     export PATH=${statPath}
     ${barHelpers}
+
+    # "Built against" is 13 characters, longer than the shared 10-character
+    # label column, so this tooltip pads to 13.
+    row() {
+      printf '%-13s %s\n' "$1" "$2"
+    }
 
     while :; do
       link=$(readlink /nix/var/nix/profiles/system)
@@ -1131,9 +1137,9 @@ let
         fi
         row Nix "$(${osConfig.nix.package}/bin/nix --version | awk '{ print $NF }')"
         if [ -n "$config" ]; then
-          row Config "''${config:0:7}"
+          row "Built against" "''${config:0:7}"
         else
-          row Config unknown
+          row "Built against" unknown
         fi
         if [ "$(readlink -f /run/current-system)" = "$(readlink -f /nix/var/nix/profiles/system)" ]; then
           row Generation "$gen, built $built"
