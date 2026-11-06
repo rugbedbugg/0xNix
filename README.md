@@ -61,6 +61,15 @@ Waybar tooltips for CPU, RAM, swap, disk, GPU and battery:
    sudo nixos-rebuild switch --flake .#nixos
    ```
 
+6. Install the frequently updated packages into your user profile. They are separate flake outputs. The switch does not install them. The Edge and Vesktop keybinds start their binaries from `~/.nix-profile/bin`.
+
+   ```sh
+   nix profile add .#agents .#apps
+   ls ~/.nix-profile/bin/microsoft-edge ~/.nix-profile/bin/vesktop
+   ```
+
+   `ls` prints both paths when the install worked. Update them later with `nix flake update nixpkgs-unstable` followed by `nix profile upgrade --all`.
+
 Keep private values such as your email out of `vars.nix`. It is committed and ends up in the world-readable Nix store. Put them in a runtime file like the git identity file instead.
 
 ## Build without activating
