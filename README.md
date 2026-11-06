@@ -109,8 +109,9 @@ nix --extra-experimental-features 'nix-command flakes' build .#system --out-link
 
 - `flake check` also boots the whole system in a QEMU VM and checks the
   units, the user, the Home Manager activation and the core executables. It
-  does the same for the fresh install host. It needs `/dev/kvm`. Run only
-  the laptop test with `nix build .#checks.x86_64-linux.vm -L`.
+  does the same for the fresh install host. It needs `/dev/kvm`. To run only
+  the VM checks, one at a time, use `scripts/vm-checks.sh`. Pass `vm`,
+  `vm-fresh` or `disk-layout` to run a subset.
 - These commands write build results to the Nix store and a local result
   symlink. They do not change the active system, user configuration,
   bootloader or EFI files.
