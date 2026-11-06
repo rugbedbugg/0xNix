@@ -1,6 +1,6 @@
 # Pixel geometry shared by the floating special-workspace windows
 # (keybinds.nix) and the label bar on their top-left corner
-# (desktop-tools.nix). Both read it from here so the bar stays flush with
+# (waybar-side-bars.nix). Both read it from here so the bar stays flush with
 # the window frame at any resolution. The numbers in the comments are for
 # a 1920x1080 screen.
 { screen }:

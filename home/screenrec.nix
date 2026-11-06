@@ -1,5 +1,5 @@
 # Screen recorder shared by the record keybinds (keybinds.nix) and the
-# waybar timer (desktop-tools.nix). Both import it from here so they agree
+# waybar timer (waybar-side-bars.nix). Both import it from here so they agree
 # on where a running recording keeps its state.
 #
 # wl-screenrec encodes H.264 on the GPU through VA-API, so recording barely
@@ -13,7 +13,7 @@ let
   run = "$XDG_RUNTIME_DIR/screenrec";
   pactl = "${pkgs.pulseaudio}/bin/pactl";
   flock = "${pkgs.util-linux}/bin/flock";
-  # Starts or stops the timer bar in desktop-tools.nix.
+  # Starts or stops the timer bar in waybar-side-bars.nix.
   timerBar = action: "${pkgs.systemd}/bin/systemctl --user ${action} waybar-recording.service";
 in
 {

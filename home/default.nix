@@ -9,6 +9,8 @@
     ./shell.nix
     ./hyprland.nix
     ./desktop-tools.nix
+    ./waybar.nix
+    ./waybar-side-bars.nix
     ./keybinds.nix
     ./packages.nix
     ./media.nix
