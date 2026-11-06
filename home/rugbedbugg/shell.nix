@@ -14,7 +14,12 @@
       gs = "git status";
       # Plain `nixos-rebuild switch` reads /etc/nixos, which only holds a
       # guard that stops the build. Always go through the flake.
-      rebuild = "sudo nixos-rebuild switch --flake ~/0xNix#nixos";
+      #
+      # Two checks run before the switch: the Qt theme and the Hyprland
+      # config. A failing check stops the switch. They build the same system
+      # the switch then uses, so they add little. A bare
+      # `sudo nixos-rebuild switch --flake ~/0xNix#nixos` skips them.
+      rebuild = "nix build --no-link ~/0xNix#checks.x86_64-linux.qt-theme ~/0xNix#checks.x86_64-linux.desktop-config && sudo nixos-rebuild switch --flake ~/0xNix#nixos";
     };
   };
   programs.direnv = {
