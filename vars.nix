@@ -9,6 +9,9 @@
   # Public commit author name. The email and signing key come from the
   # untracked ~/.config/git/identity file.
   gitName = "rugbedbugg";
+  # Tailscale address of the paired phone. It is the only peer allowed to
+  # reach KDE Connect (modules/system/tailscale.nix).
+  phoneAddress = "100.67.86.76";
   # Logical resolution of the main display, after scaling. The floating
   # overlays and the special-workspace bar are laid out from it in pixels
   # (home/rugbedbugg/overlay-geometry.nix).
