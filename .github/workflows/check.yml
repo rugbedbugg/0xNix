@@ -1,6 +1,7 @@
 # The check job evaluates every flake output and checks formatting. Building
 # the full system is too heavy for a hosted runner, so it stops at evaluation.
-# That still runs the configuration-safety assertions in checks/.
+# That still runs the configuration-safety assertions in checks/. It also
+# builds the python-scripts check, which compiles and lints the Python files.
 #
 # The desktop-config job builds the one check that runs the desktop tools:
 # the Lua parse, the Waybar JSON and Hyprland's own config verification. Its
@@ -24,6 +25,8 @@ jobs:
         run: nix fmt -- --check $(git ls-files '*.nix' ':!hosts/nixos/hardware-configuration.nix')
       - name: Evaluate the flake
         run: nix flake check --no-build
+      - name: Check the Python scripts
+        run: nix build --no-link .#checks.x86_64-linux.python-scripts
 
   desktop-config:
     runs-on: ubuntu-latest
