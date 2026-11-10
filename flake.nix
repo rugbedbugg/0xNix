@@ -2,7 +2,7 @@
   description = "Pinned NixOS 26.05 Hyprland workstation";
 
   inputs = {
-    # Exact revision used by the installed generation 1.
+    # Follows the stable 26.05 channel. The lock file pins the exact revision.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     # Deliberately NOT pinned/following the main nixpkgs: this is the escape
     # hatch for packages that want to track upstream more closely than the
