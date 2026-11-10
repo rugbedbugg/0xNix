@@ -22,19 +22,7 @@
       pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
       pkgsUnstable = import inputs.nixpkgs-unstable { inherit system; config.allowUnfree = true; };
       aws-agent-toolkit = inputs.aws-agent-toolkit or null;
-profileEnv =
-        args:
-        (pkgsUnstable.buildEnv args).overrideAttrs { disallowedRequisites = [ pkgsUnstable.qt6.qtbase ]; };
-asm-exec = pkgsUnstable.writeShellApplication {
-        name = "asm-exec";
-        runtimeInputs = [
-          pkgsUnstable.python3
-          pkgsUnstable.awscli2
-        ];
-        text = ''
-          exec python3 ${aws-agent-toolkit}/plugins/aws-core/skills/aws-secrets-manager/references/asm-exec "$@"
-        '';
-      };
+
     in
     {
       nixosModules.default = { imports = [ ./modules/desktop ./modules/development ]; };
@@ -48,42 +36,6 @@ asm-exec = pkgsUnstable.writeShellApplication {
       };
       formatter.${system} = pkgs.nixfmt;
       devShells.${system} = import ./devshells { inherit pkgs; };
-      packages.${system} = {
-agents = profileEnv {
-          name = "agents";
-          paths = with pkgsUnstable; [
-            claude-code
-            codex
-            opencode
-            antigravity-cli
-            # Codex looks these up on PATH at runtime. It sandboxes commands
-            # with bwrap. Its plugins use Node.js and Python.
-            bubblewrap
-            nodejs
-            python3
-          ];
-        };
-apps = profileEnv {
-          name = "apps";
-          paths = with pkgsUnstable; [
-            vesktop
-            awscli2
-            # `aws ssm start-session` hands the session to this binary, so it
-            # updates together with the CLI.
-            ssm-session-manager-plugin
-            asm-exec
-            firefox
-            google-chrome
-            microsoft-edge
-            zapfast
-            # Both reach YouTube through yt-dlp, which breaks when YouTube
-            # changes. Here it updates with the profile instead of waiting
-            # for a rebuild.
-            mpv
-            youtube-tui
-          ];
-        };
-      };
       templates = {
         ai = { path = ./templates/ai; description = "ai development environment"; };
         bash = { path = ./templates/bash; description = "bash development environment"; };

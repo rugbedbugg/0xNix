@@ -13,6 +13,7 @@
     ./waybar-side-bars.nix
     ./keybinds.nix
     ./packages.nix
+    ./apps.nix
     ./media.nix
     ./files.nix
     ./wallpaper.nix
