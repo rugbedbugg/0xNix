@@ -11,9 +11,10 @@ let
   identity = "${config.xdg.configHome}/git/identity";
 in
 {
-  # Git, the GitHub CLI and the GnuPG setup that signs commits. The system
-  # module installs git separately so root shells have it too.
+  # Git, the GitHub and GitLab CLIs and the GnuPG setup that signs commits.
+  # The system module installs git separately so root shells have it too.
   programs.gh.enable = true;
+  home.packages = [ pkgs.glab ];
 
   # Every commit and tag is signed with the ed25519 key carried over from
   # the Arch install. The keyring stays mutable in ~/.gnupg; only gpg.conf
