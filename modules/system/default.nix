@@ -47,7 +47,7 @@ in
         "flakes"
       ];
       sandbox = true;
-      # The laptop has 7 GiB usable RAM and no swap.
+      # The laptop has 7 GiB usable RAM.
       max-jobs = 2;
       cores = 2;
       # Keep build-only tools like gcc through garbage collection, so a
