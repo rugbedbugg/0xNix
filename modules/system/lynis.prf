@@ -1,0 +1,19 @@
+profile-name=NixOS Development Workstation
+machine-role=workstation
+
+# Discover the modules referenced by NixOS instead of conventional library paths.
+plugin=nixospam
+skip-test=AUTH-9268
+
+# Compilers are required for development and Nix builds.
+skip-test=HRDN-7222
+
+# System configuration is managed declaratively.
+skip-test=TOOL-5002
+
+# Legal login banner is unnecessary for a personal laptop.
+skip-test=BANN-7126
+
+# The shared boot partition contains Arch's kernel.
+# This check compares it against the running NixOS kernel.
+skip-test=KRNL-5830

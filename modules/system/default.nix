@@ -5,6 +5,7 @@ in
 {
   imports = [
     ./boot-baseline.nix
+    ./security.nix
     ./tailscale.nix
   ];
 
