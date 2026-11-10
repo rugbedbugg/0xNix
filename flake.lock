@@ -139,7 +139,24 @@
         "home-manager": "home-manager",
         "ly-lock": "ly-lock",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-unstable": "nixpkgs-unstable"
+        "nixpkgs-unstable": "nixpkgs-unstable",
+        "signature-base": "signature-base"
+      }
+    },
+    "signature-base": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793989194,
+        "narHash": "sha256-COagkpKNrx3qB3nr1SqTGLEiriHMTnHUNvRkJQ+jSLc=",
+        "owner": "Neo23x0",
+        "repo": "signature-base",
+        "rev": "de3c7252c22b3376352b5a68defa46459a12a693",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Neo23x0",
+        "repo": "signature-base",
+        "type": "github"
       }
     }
   },

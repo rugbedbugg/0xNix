@@ -23,6 +23,12 @@
       url = "github:aws/agent-toolkit-for-aws/7fcb1da17abba610d7becc973c2141b40412e02c";
       flake = false;
     };
+    # Public YARA rules for the system scanner. The lock file pins the exact
+    # revision. Bump it with `nix flake update signature-base`.
+    signature-base = {
+      url = "github:Neo23x0/signature-base";
+      flake = false;
+    };
     ly-lock = {
       url = "github:rugbedbugg/ly-lock";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -41,6 +47,7 @@
       home-manager,
       disko,
       aws-agent-toolkit,
+      signature-base,
       ly-lock,
       aurora,
       ...
@@ -59,7 +66,12 @@
       };
       hostSpecialArgs = {
         pkgs-unstable = pkgsUnstable;
-        inherit vars palette aws-agent-toolkit;
+        inherit
+          vars
+          palette
+          aws-agent-toolkit
+          signature-base
+          ;
       };
       commonModules = [
         # The commit this system was built from, which the bar's Nix
