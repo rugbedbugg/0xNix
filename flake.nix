@@ -3,7 +3,7 @@
 
   inputs = {
     # Exact revision used by the installed generation 1.
-    nixpkgs.url = "github:NixOS/nixpkgs/26f4107e47e3ad0ffd0db220469ba83b6f6d96e8";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     # Deliberately NOT pinned/following the main nixpkgs: this is the escape
     # hatch for packages that want to track upstream more closely than the
     # rest of this stable system. They install through the system and home
