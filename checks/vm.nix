@@ -14,10 +14,6 @@
 # a headless VM is too flaky to gate on, so the test stops at the units that
 # start it.
 #
-# The `agents` and `apps` profiles are not installed here. `nix profile`
-# needs the network and a large closure, and the build sandbox has neither.
-# scripts/install-profiles.sh covers them.
-#
 # Run it locally, since it needs /dev/kvm and builds the whole system:
 #   nix build .#checks.x86_64-linux.vm --max-jobs 2 --cores 2 -L
 {

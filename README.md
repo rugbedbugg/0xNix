@@ -82,15 +82,7 @@ The manual steps below do the same by hand.
    sudo nixos-rebuild switch --flake .#nixos
    ```
 
-6. Install the frequently updated packages into your user profile. They are separate flake outputs. The switch does not install them. The Edge and Vesktop keybinds start their binaries from `~/.nix-profile/bin`.
-
-   ```sh
-   scripts/install-profiles.sh
-   ```
-
-   The script skips a package that is already installed. It ends by checking `~/.nix-profile/bin/microsoft-edge` and `~/.nix-profile/bin/vesktop`. Run it again after any failed install. Update the packages later with `nix flake update nixpkgs-unstable` followed by `nix profile upgrade --all`.
-
-7. Restore the state that stays outside the repository. Nothing here is automated on purpose.
+6. Restore the state that stays outside the repository. Nothing here is automated on purpose.
 
    - Import the GPG signing key whose fingerprint is in the git identity file.
    - Authenticate Tailscale with `sudo tailscale up`.

@@ -2,8 +2,7 @@
 # Setup wizard for a NixOS machine that already runs. It asks for the details
 # in vars.nix and for the git identity, shows a summary and writes both after
 # a confirmation. The defaults come from the current vars.nix and the current
-# identity file. It can then build and switch the system and install the
-# profile packages.
+# identity file. It can then build and switch the system.
 #
 # The git email and signing key go to ~/.config/git/identity only. vars.nix
 # is committed and ends up in the world-readable Nix store.
@@ -303,13 +302,7 @@ if [[ -z ${switched-} ]]; then
     printf '\nNext, run:\n'
   fi
   printf "  sudo nixos-rebuild switch --flake %s#nixos --option experimental-features 'nix-command flakes'\n" "$repo"
-  printf 'Then run scripts/install-profiles.sh after you log in.\n'
   exit 0
 fi
 
-if command -v jq >/dev/null && ask_yes $'\nInstall the agents and apps profiles now?' y; then
-  "$repo/scripts/install-profiles.sh"
-else
-  printf '\nOpen a new login shell, then run scripts/install-profiles.sh.\n'
-fi
 printf 'Next: restore the state listed in the README, such as the GPG key and tailscale up.\n'

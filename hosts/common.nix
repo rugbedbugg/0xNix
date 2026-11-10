@@ -1,5 +1,6 @@
 {
   pkgs-unstable,
+  aws-agent-toolkit,
   vars,
   palette,
   ...
@@ -18,7 +19,7 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "before-home-manager";
-    extraSpecialArgs = { inherit pkgs-unstable vars palette; };
+    extraSpecialArgs = { inherit pkgs-unstable aws-agent-toolkit vars palette; };
     users.${vars.username} = import ../home/rugbedbugg;
   };
 }

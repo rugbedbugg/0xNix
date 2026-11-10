@@ -15,8 +15,8 @@ let
   # takes ~30ms. `uwsm app` starts a Python process for every launch and
   # takes ~125ms.
   app = cmd: "${pkgs.uwsm}/bin/uwsm-app -- ${cmd}";
-  # Frequently updated packages installed with `nix profile`.
-  profileBin = "${config.home.homeDirectory}/.nix-profile/bin";
+  # Where home.packages binaries land, for the apps that apps.nix installs.
+  profileBin = "${config.home.profileDirectory}/bin";
   notify = "${pkgs.mako}/bin/makoctl";
   media = "${pkgs.playerctl}/bin/playerctl";
 
@@ -219,8 +219,7 @@ let
     launchCmd = app (footAs "lf-special" "${config.programs.lf.package}/bin/lf");
   };
 
-  # Discord via Vesktop, from the user profile (the flake's `apps` package)
-  # so it updates without a rebuild. Its Wayland app-id is "vesktop",
+  # Discord via Vesktop, from apps.nix. Its Wayland app-id is "vesktop",
   # confirmed live. Gets the same floating overlay as the terminals below.
   toggleDiscord = mkSpecialToggle {
     class = "vesktop";
@@ -228,7 +227,7 @@ let
     launchCmd = app "${profileBin}/vesktop";
   };
 
-  # WhatsApp via ZapFast, also from the user profile. Its Wayland app-id is
+  # WhatsApp via ZapFast, also from apps.nix. Its Wayland app-id is
   # "zapfast", confirmed live with `hyprctl clients` when the keyring screen
   # was up. Closing its window leaves the app in the system tray with no
   # window of its own, so the toggle's "is it running" check finds nothing
@@ -240,7 +239,7 @@ let
     launchCmd = app "${profileBin}/zapfast";
   };
 
-  # YouTube via youtube-tui in foot, from the user profile. Videos it opens
+  # YouTube via youtube-tui in foot, from apps.nix. Videos it opens
   # play in mpv, which youtube-tui starts with MPV_HOME pointing here instead
   # of ~/.config/mpv. The player window then reports its own app-id, and the
   # window rules below float it over the list. mpv started anywhere else
