@@ -1,6 +1,7 @@
 { pkgs, ... }:
 {
   programs.gh.enable = true;
+  home.packages = [ pkgs.glab ];
   programs.git = {
     enable = true;
     settings.init.defaultBranch = "main";
