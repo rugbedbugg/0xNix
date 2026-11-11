@@ -21,6 +21,7 @@
     ./git.nix
     ./gtk.nix
     ./qt.nix
+    ./zathura.nix
     ./nvim.nix
   ];
 
@@ -48,6 +49,7 @@
     defaultApplications = {
       "x-scheme-handler/claude-cli" = "claude-code-url-handler.desktop";
       "x-scheme-handler/discord" = "vesktop.desktop";
+      "application/pdf" = "org.pwmt.zathura-pdf-mupdf.desktop";
       "text/html" = "microsoft-edge.desktop";
       "x-scheme-handler/http" = "microsoft-edge.desktop";
       "x-scheme-handler/https" = "microsoft-edge.desktop";
