@@ -128,6 +128,22 @@ in
     save_mode=suggested
   '';
 
-  # A fallback for drag-and-drop, not bound to any key.
-  home.packages = [ pkgs.thunar ];
+  # The packaged lf.desktop declares Terminal=true, which needs a terminal
+  # that xdg-open can find. This entry starts foot itself. It makes lf the
+  # handler for folders, so "Open folder" actions from apps and xdg-open on a
+  # directory land in lf.
+  xdg.desktopEntries.lf-foot = {
+    name = "lf";
+    comment = "Open a folder in lf";
+    exec = "${pkgs.foot}/bin/foot ${config.programs.lf.package}/bin/lf %f";
+    icon = "utilities-terminal";
+    terminal = false;
+    categories = [
+      "System"
+      "FileTools"
+      "FileManager"
+    ];
+    mimeType = [ "inode/directory" ];
+  };
+  xdg.mimeApps.defaultApplications."inode/directory" = "lf-foot.desktop";
 }

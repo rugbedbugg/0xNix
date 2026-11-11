@@ -87,7 +87,7 @@ let
     [Appearance]
     color_scheme_path=${colours}
     custom_palette=true
-    standard_dialogs=default
+    standard_dialogs=xdgdesktopportal
     style=Fusion
 
     [Fonts]

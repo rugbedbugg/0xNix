@@ -119,7 +119,13 @@ in
     # the home profile.
     ++ (with pkgs-unstable; [
       vesktop
-      firefox
+      # Firefox uses the portal for file dialogs only in a sandbox by
+      # default. Pref 1 sends them through the portal, which opens lf.
+      (firefox.override {
+        extraPrefs = ''
+          pref("widget.use-xdg-desktop-portal.file-picker", 1);
+        '';
+      })
       google-chrome
       microsoft-edge
       # Both reach YouTube through yt-dlp, which breaks when YouTube changes.
