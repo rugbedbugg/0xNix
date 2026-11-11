@@ -88,6 +88,7 @@ let
     color_scheme_path=${colours}
     custom_palette=true
     standard_dialogs=xdgdesktopportal
+    icon_theme=breeze-dark
     style=Fusion
 
     [Fonts]
@@ -97,7 +98,7 @@ let
     [Interface]
     stylesheets=${sheet}
   '';
-  kde =
+  kdeGroups =
     let
       rgb = role: builtins.replaceStrings [ ";" ] [ "," ] palette.rgb.${role};
       group = name: bg: alt: fg: ''
@@ -117,17 +118,34 @@ let
       '';
       plain = name: group name "surface" "surfaceContainer" "border";
     in
-    pkgs.writeText "kdeglobals" (
-      builtins.concatStringsSep "\n" [
-        (plain "Window")
-        (plain "View")
-        (plain "Button")
-        (plain "Tooltip")
-        (plain "Complementary")
-        (plain "Header")
-        (group "Selection" "text" "text" "surface")
-      ]
-    );
+    builtins.concatStringsSep "\n" [
+      (plain "Window")
+      (plain "View")
+      (plain "Button")
+      (plain "Tooltip")
+      (plain "Complementary")
+      (plain "Header")
+      (group "Selection" "text" "text" "surface")
+    ];
+  kde = pkgs.writeText "kdeglobals" (
+    kdeGroups
+    + ''
+
+      [Icons]
+      Theme=breeze-dark
+
+      [UiSettings]
+      ColorScheme=0xNix
+    ''
+  );
+  kdeScheme = pkgs.writeText "0xNix.colors" (
+    ''
+      [General]
+      Name=0xNix
+
+    ''
+    + kdeGroups
+  );
 in
 {
   qt = {
@@ -137,6 +155,12 @@ in
       package = pkgs.qt6Packages.qt6ct;
     };
   };
+  # Breeze is the icon set KDE apps such as marknote are drawn for. Its dark
+  # variant has light glyphs, which read on the dark surface. qt6ct names it
+  # for every Qt app. kdeglobals names it as well, as the fallback KDE apps
+  # read when Qt reports no icon theme.
+  home.packages = [ pkgs.kdePackages.breeze-icons ];
+  xdg.dataFile."color-schemes/0xNix.colors".source = kdeScheme;
   xdg.configFile = {
     "qt6ct/qt6ct.conf".source = conf;
     "kdeglobals".source = kde;
