@@ -28,6 +28,15 @@
       lorien
       kdePackages.marknote
       lazygit
+      # The smallest TeX Live scheme plus latexmk. A document that needs
+      # another package fails with a missing file error. Add that package to
+      # this list and rebuild.
+      (texlive.withPackages (
+        ps: with ps; [
+          scheme-basic
+          latexmk
+        ]
+      ))
     ])
     ++ (with pkgs-unstable; [
       fastfetch
