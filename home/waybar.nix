@@ -6,8 +6,7 @@
   ...
 }:
 let
-  gtkTty = import ./gtk-tty.nix { inherit pkgs palette; };
-  pavucontrol = gtkTty.wrap pkgs.pavucontrol "pavucontrol";
+  inherit (import ./special-toggle.nix { inherit pkgs palette; }) toggleVolume;
   scripts = import ./status-scripts.nix { inherit pkgs osConfig palette; };
   tooltipStyle = import ./tooltip-style.nix { inherit palette; };
 in
@@ -71,7 +70,7 @@ in
       "custom/volume" = {
         exec = "${scripts.volumeStatus}";
         return-type = "json";
-        on-click = "${pavucontrol}/bin/pavucontrol";
+        on-click = "${toggleVolume}";
       };
       "custom/battery" = {
         exec = "${scripts.batteryStatus}";

@@ -10,10 +10,11 @@ let
   geometry = import ./overlay-geometry.nix { inherit (config.desktop) screen; };
   screenrec = import ./screenrec.nix { inherit config pkgs; };
   gtkTty = import ./gtk-tty.nix { inherit pkgs palette; };
-  # uwsm-app asks uwsm's resident app daemon for the launch command, which
-  # takes ~30ms. `uwsm app` starts a Python process for every launch and
-  # takes ~125ms.
-  app = cmd: "${pkgs.uwsm}/bin/uwsm-app -- ${cmd}";
+  inherit (import ./special-toggle.nix { inherit pkgs palette; })
+    app
+    mkSpecialToggle
+    toggleVolume
+    ;
   # Where home.packages binaries land, for the apps that apps.nix installs.
   profileBin = "${config.home.profileDirectory}/bin";
   notify = "${pkgs.mako}/bin/makoctl";
@@ -135,42 +136,6 @@ let
   # script — so it stays correct however the workspace gets hidden.
   #
   # Whenever this shows the workspace, the app's window also gets keyboard
-  # focus: the window rule's `silent` keeps a freshly launched one from
-  # taking it, so the script waits for the window to map (up to 10s — a
-  # cold Vesktop start is slow) and focuses it by address. It re-checks the
-  # workspace is still shown first, so hiding it again mid-wait isn't undone.
-  mkSpecialToggle =
-    {
-      class,
-      workspace,
-      launchCmd,
-    }:
-    pkgs.writeShellScript "toggle-special-${workspace}" ''
-      hyprctl=${pkgs.hyprland}/bin/hyprctl
-      jq=${pkgs.jq}/bin/jq
-      window() {
-        $hyprctl clients -j | $jq -r --arg c "${class}" 'first(.[] | select(.class == $c) | .address) // empty'
-      }
-      shown() {
-        [ "$($hyprctl monitors -j | $jq -r '.[] | select(.focused) | .specialWorkspace.name')" = "special:${workspace}" ]
-      }
-
-      if [ -z "$(window)" ]; then
-        ( ${launchCmd} ) &
-      fi
-      $hyprctl dispatch 'hl.dsp.workspace.toggle_special("${workspace}")' >/dev/null
-      shown || exit 0
-
-      for _ in $(${pkgs.coreutils}/bin/seq 100); do
-        address=$(window)
-        [ -n "$address" ] && break
-        ${pkgs.coreutils}/bin/sleep 0.1
-      done
-      if [ -n "$address" ] && shown; then
-        $hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
-      fi
-    '';
-
   # foot's --app-id sets the Wayland app-id Hyprland reports as `class` —
   # confirmed live — so a TUI app running inside foot can still be matched
   # by its own distinct class instead of foot's generic one.
@@ -296,6 +261,7 @@ in
       -- Not silent: the list is on screen when it starts a video, so the
       -- player takes focus there.
       hl.window_rule({ name = "youtube-player-ws", match = { class = "^youtube-player$" }, workspace = "special:youtube" })
+      hl.window_rule({ name = "volume-special-ws", match = { class = "^org\\.pulseaudio\\.pavucontrol$" }, workspace = "special:volume silent" })
 
       -- A new window opens on the focused workspace, which is the special
       -- one while an overlay is up. A foot from Super + T or a link opened
@@ -327,7 +293,7 @@ in
       -- label bar in waybar-side-bars.nix. The lf file chooser (files.nix)
       -- and the satty screenshot editor get the same frame but open on
       -- whatever workspace is in front.
-      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "filechooser", "com\\.gabm\\.satty"}) do
+      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "org\\.pulseaudio\\.pavucontrol", "filechooser", "com\\.gabm\\.satty"}) do
         hl.window_rule({
           name = "float-style-" .. cls,
           match = { class = "^" .. cls .. "$" },
@@ -363,7 +329,7 @@ in
       hl.bind("SUPER + B", hl.dsp.exec_cmd("${app "${profileBin}/microsoft-edge-stable"}"), { description = "Browser" })
       hl.bind("SUPER + C", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot ${config.programs.neovim.finalPackage}/bin/nvim"}"), { description = "Editor (nvim)" })
       hl.bind("SUPER + O", hl.dsp.exec_cmd("${app "${pkgs.libreoffice-fresh}/bin/libreoffice"}"), { description = "Office (LibreOffice)" })
-      hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("${app "${gtkTty.wrap pkgs.pavucontrol "pavucontrol"}/bin/pavucontrol"}"), { description = "Volume mixer" })
+      hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("${toggleVolume}"), { description = "Volume mixer" })
 
       -- Special workspaces (toggle visibility, launch on first use).
       hl.bind("SUPER + M", hl.dsp.exec_cmd("${toggleMusic}"), { description = "Music (rmpc)" })
