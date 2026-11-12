@@ -22,6 +22,7 @@
     ./gtk.nix
     ./qt.nix
     ./zathura.nix
+    ./zapfast.nix
     ./nvim.nix
   ];
 
