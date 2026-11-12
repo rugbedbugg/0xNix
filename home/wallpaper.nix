@@ -107,6 +107,16 @@ let
       ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$link")"
       ${pkgs.coreutils}/bin/ln -sfn "$1" "$link"
       ${pkgs.systemd}/bin/systemctl --user reload-or-restart wallpaper.service
+      # ZapFast keeps its own copy of the chat wallpaper image, named in each
+      # account's settings. Overwrite that copy with the new image. ZapFast
+      # reads it at start, so a running window keeps the old one.
+      for settings in "${config.xdg.stateHome}"/zapfast/accounts/*/settings.json; do
+        [ -f "$settings" ] || continue
+        copy=$(${pkgs.jq}/bin/jq -r '.wallpaper_image // empty' "$settings")
+        case "$copy" in
+          "${config.xdg.stateHome}"/zapfast/accounts/*/wallpaper.*) ${pkgs.coreutils}/bin/cp -f -- "$1" "$copy" ;;
+        esac
+      done
     }
 
     case "$1" in
