@@ -11,6 +11,7 @@
     ./desktop-tools.nix
     ./waybar.nix
     ./waybar-side-bars.nix
+    ./floating.nix
     ./keybinds.nix
     ./packages.nix
     ./apps.nix

@@ -204,6 +204,42 @@ let
       footAs "youtube-special" "${pkgs.coreutils}/bin/env MPV_HOME=${youtubeMpv} ${profileBin}/youtube-tui"
     );
   };
+  # Apps that tile. Super + key opens one into the layout. Super + Alt + key
+  # opens it floating (floating.nix): the first window of a matching class
+  # that opens within a few seconds floats as a golden rectangle in
+  # floating.lua. A pattern is a Lua pattern on the window class, and
+  # LibreOffice opens each component under its own class.
+  launches = [
+    {
+      key = "T";
+      description = "Terminal";
+      command = app "${pkgs.foot}/bin/foot";
+      classes = [ "^foot$" ];
+    }
+    {
+      key = "B";
+      description = "Browser";
+      command = app "${profileBin}/microsoft-edge-stable";
+      classes = [ "^microsoft%-edge$" ];
+    }
+    {
+      key = "C";
+      description = "Editor (nvim)";
+      command = app "${pkgs.foot}/bin/foot ${config.programs.neovim.finalPackage}/bin/nvim";
+      classes = [ "^foot$" ];
+    }
+    {
+      key = "O";
+      description = "Office (LibreOffice)";
+      command = app "${pkgs.libreoffice-fresh}/bin/libreoffice";
+      classes = [ "^libreoffice" ];
+    }
+  ];
+  luaList = items: "{ " + lib.concatMapStringsSep ", " (item: ''"${item}"'') items + " }";
+  launchBinds = lib.concatMapStringsSep "\n" (launch: ''
+    hl.bind("SUPER + ${launch.key}", hl.dsp.exec_cmd("${launch.command}"), { description = "${launch.description}" })
+    hl.bind("SUPER + ALT + ${launch.key}", function() floating.launch(${luaList launch.classes}, "${launch.command}") end, { description = "${launch.description}, floating" })
+  '') launches;
 in
 {
   # Desktop binds on top of hyprland.nix's core set, using the plain desktop
@@ -245,7 +281,7 @@ in
 
     wayland.windowManager.hyprland.extraConfig = lib.mkAfter ''
       for _, direction in ipairs({"left", "right", "up", "down"}) do
-        hl.bind("SUPER + SHIFT + " .. direction, hl.dsp.window.move({ direction = direction }), { description = "Move window " .. direction })
+        hl.bind("SUPER + SHIFT + " .. direction, function() floating.nudge(direction) end, { repeating = true, description = "Move window " .. direction })
       end
 
       -- Special-workspace window assignment: whenever these apps open (via
@@ -325,10 +361,7 @@ in
       hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("${media} previous"), { locked = true })
       hl.bind("XF86AudioStop", hl.dsp.exec_cmd("${media} stop"), { locked = true })
 
-      hl.bind("SUPER + T", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot"}"), { description = "Terminal" })
-      hl.bind("SUPER + B", hl.dsp.exec_cmd("${app "${profileBin}/microsoft-edge-stable"}"), { description = "Browser" })
-      hl.bind("SUPER + C", hl.dsp.exec_cmd("${app "${pkgs.foot}/bin/foot ${config.programs.neovim.finalPackage}/bin/nvim"}"), { description = "Editor (nvim)" })
-      hl.bind("SUPER + O", hl.dsp.exec_cmd("${app "${pkgs.libreoffice-fresh}/bin/libreoffice"}"), { description = "Office (LibreOffice)" })
+      ${launchBinds}
       hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("${toggleVolume}"), { description = "Volume mixer" })
 
       -- Special workspaces (toggle visibility, launch on first use).
