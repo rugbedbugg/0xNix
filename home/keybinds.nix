@@ -284,6 +284,15 @@ in
         hl.bind("SUPER + SHIFT + " .. direction, function() floating.nudge(direction) end, { repeating = true, description = "Move window " .. direction })
       end
 
+      -- Super + = and Super + - change the width. Adding Shift changes the
+      -- height. The = key is the + key without Shift. A tiled window moves
+      -- its split, and a floating window grows around its centre.
+      for key, sign in pairs({ equal = 1, minus = -1 }) do
+        local word = sign > 0 and "Grow" or "Shrink"
+        hl.bind("SUPER + " .. key, hl.dsp.window.resize({ x = sign * 40, y = 0, relative = true }), { repeating = true, description = word .. " window width" })
+        hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.resize({ x = 0, y = sign * 40, relative = true }), { repeating = true, description = word .. " window height" })
+      end
+
       -- Special-workspace window assignment: whenever these apps open (via
       -- their dedicated toggle keybinds below), they land silently in their
       -- own special workspace instead of the tiling layout.
