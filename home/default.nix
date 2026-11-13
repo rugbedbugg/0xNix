@@ -18,6 +18,7 @@
     ./packages.nix
     ./apps.nix
     ./media.nix
+    ./mpv.nix
     ./files.nix
     ./wallpaper.nix
     ./minimap.nix

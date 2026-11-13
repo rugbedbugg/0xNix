@@ -261,12 +261,23 @@ let
 
   # YouTube via youtube-tui in foot, from apps.nix. Videos it opens
   # play in mpv, which youtube-tui starts with MPV_HOME pointing here instead
-  # of ~/.config/mpv. The player window then reports its own app-id, and the
-  # window rules below float it over the list. mpv started anywhere else
+  # of ~/.config/mpv. It gets the same theme (mpv-theme.nix), since the
+  # config directory is not shared. The player window then reports its own
+  # app-id, and the window rules below float it over the list. mpv started anywhere else
   # keeps the plain "mpv" app-id.
-  youtubeMpv = pkgs.writeTextDir "mpv.conf" ''
-    wayland-app-id=youtube-player
-  '';
+  mpvTheme = import ./mpv-theme.nix { inherit palette; };
+  youtubeMpv = pkgs.symlinkJoin {
+    name = "youtube-mpv";
+    paths = [
+      (pkgs.writeTextDir "mpv.conf" (
+        mpvTheme.config
+        + ''
+          wayland-app-id=youtube-player
+        ''
+      ))
+      (pkgs.writeTextDir "script-opts/osc.conf" mpvTheme.osc)
+    ];
+  };
 
   toggleYouTube = mkSpecialToggle {
     class = "youtube-special";
