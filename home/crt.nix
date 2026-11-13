@@ -1,42 +1,69 @@
-# Runs crt.frag over the whole screen and binds Super + Shift + C to turn it
-# off and on. The shader explains the look.
+# Runs crt.frag over the whole screen. The Konami code turns it off and on
+# again, with a notification each time. The shader explains the look and
+# crt-control.nix holds the commands that switch it.
+#
+# The code is up, up, down, down, left, right, left, right, b, a. The keys
+# are bound without a modifier and still reach the window that has focus.
+# The code only counts while no window has focus, such as on an empty
+# workspace, so typing in an app never trips it. A pause of two seconds
+# forgets the keys pressed so far.
+#
+# Without the code there is no other key. Running the toggle script from a
+# terminal does the same, and so does a config reload, which turns the
+# shader back on.
 { pkgs, ... }:
 let
-  shader = "${./crt.frag}";
+  crt = import ./crt-control.nix { inherit pkgs; };
 
-  # The rolling line moves on every frame, but Hyprland draws a frame only
-  # when a window changes, so the line would jump. vfr off draws every frame
-  # at the monitor's rate. The curve and the glow draw each pixel from the
-  # pixels around it. Redrawing only the changed part of the screen would
-  # leave smears next to it, so damage tracking is off too. Both cost GPU
-  # time and battery even on a still screen. With the shader off, the toggle
-  # puts back Hyprland's defaults: vfr on and damage tracking 2, which
-  # redraws only what changed.
-  #
-  # The Lua config rejects `hyprctl keyword`, so the options are set through
-  # `hyprctl eval`. An empty path clears the shader. A config reload turns it
-  # back on.
   toggle = pkgs.writeShellScript "crt-toggle" ''
-    hyprctl=${pkgs.hyprland}/bin/hyprctl
-    if [ "$($hyprctl getoption decoration:screen_shader -j | ${pkgs.jq}/bin/jq -r .str)" = "${shader}" ]; then
-      options='decoration = { screen_shader = "" }, debug = { vfr = true, damage_tracking = 2 }'
+    if ${crt.isOn}; then
+      ${crt.off}
+      message="Deactivated overlay"
     else
-      options='decoration = { screen_shader = "${shader}" }, debug = { vfr = false, damage_tracking = 0 }'
+      ${crt.on}
+      message="Activated CRT overlay"
     fi
-    $hyprctl eval "hl.config({ $options })" >/dev/null
+    ${pkgs.libnotify}/bin/notify-send -a CRT -t 2500 "$message"
   '';
 in
 {
   wayland.windowManager.hyprland = {
     settings.config = {
-      decoration.screen_shader = shader;
+      decoration.screen_shader = crt.shader;
       debug = {
         vfr = false;
         damage_tracking = 0;
       };
     };
     extraConfig = ''
-      hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("${toggle}"), { description = "Toggle CRT screen" })
+      local konami = { "up", "up", "down", "down", "left", "right", "left", "right", "b", "a" }
+      local pressed = {}
+      local presses = 0
+
+      local function konami_key(key)
+        presses = presses + 1
+        local mine = presses
+        hl.timer(function()
+          if mine == presses then pressed = {} end
+        end, { timeout = 2000, type = "oneshot" })
+        if hl.get_active_window() then
+          pressed = {}
+          return
+        end
+        table.insert(pressed, key)
+        if #pressed > #konami then table.remove(pressed, 1) end
+        if #pressed == #konami then
+          for i, expected in ipairs(konami) do
+            if pressed[i] ~= expected then return end
+          end
+          pressed = {}
+          hl.dispatch(hl.dsp.exec_cmd("${toggle}"))
+        end
+      end
+
+      for _, key in ipairs({ "up", "down", "left", "right", "b", "a" }) do
+        hl.bind(key, function() konami_key(key) end, { non_consuming = true })
+      end
     '';
   };
 }
