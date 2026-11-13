@@ -13,9 +13,14 @@
   # server to talk to. "pipewire" is a real, confirmed MPD output plugin on
   # this package build (checked `mpd --version`'s Output plugins list), the
   # correct native choice on this pipewire-based system.
+  #
+  # auto_update makes mpd watch the music directory through inotify. Songs
+  # added, changed or removed there show up in rmpc without an update.
   services.mpd = {
     enable = true;
     extraConfig = ''
+      auto_update "yes"
+
       audio_output {
         type "pipewire"
         name "PipeWire Output"
