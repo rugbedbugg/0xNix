@@ -8,6 +8,7 @@
   imports = [
     ./shell.nix
     ./hyprland.nix
+    ./crt.nix
     ./desktop-tools.nix
     ./waybar.nix
     ./waybar-side-bars.nix
