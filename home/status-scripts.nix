@@ -1,5 +1,6 @@
 # The scripts behind the main bar's modules and the small bars beside the
-# clock, plus the power watcher. Each one runs for the bar's whole lifetime and
+# clock, plus the power watcher. The bottom bar reuses the helpers and the
+# PATH. Each one runs for the bar's whole lifetime and
 # prints one waybar JSON line per update, apart from the watcher, which sends
 # toasts.
 {
@@ -10,8 +11,8 @@
 let
   # Shell functions shared by the main bar's script modules. Each script puts
   # jq, gawk and coreutils on its PATH.
-  #   emit TEXT TOOLTIP [CLASS]  print one waybar JSON line, with the tooltip
-  #                              escaped for Pango markup
+  #   emit TEXT TOOLTIP [CLASS]  print one waybar JSON line, with the text and
+  #                              the tooltip escaped for Pango markup
   #   row LABEL VALUE            print one aligned tooltip row
   #   cell NAME                  NAME in a 16-column cell. A longer one is
   #                              cut to 15 and ends in ~, so the column
@@ -29,7 +30,7 @@ let
   barHelpers = ''
     emit() {
       jq -cn --arg text "$1" --arg tooltip "$2" --arg class "''${3:-}" \
-        '{text: $text, tooltip: ($tooltip | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")), class: $class}'
+        '{text: ($text | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")), tooltip: ($tooltip | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")), class: $class}'
     }
 
     row() {
@@ -973,5 +974,7 @@ in
     clockStatus
     nixStatus
     batteryStatus
+    barHelpers
+    statPath
     ;
 }

@@ -12,7 +12,7 @@ let
   # palette, the screen size and the tool paths filled in through the
   # @name@ placeholders. The slot positions depend on the minimap's size,
   # which changes while it runs, so the script computes them itself from
-  # the screen size and the bar height.
+  # the screen size and the bar heights.
   script = pkgs.replaceVars ./minimap.py {
     inherit (palette)
       border
@@ -23,6 +23,7 @@ let
     screenWidth = toString config.desktop.screen.width;
     screenHeight = toString config.desktop.screen.height;
     bar = toString geometry.bar;
+    bottomBar = toString geometry.bottomBar;
     grim = "${pkgs.grim}/bin/grim";
     hyprctl = "${pkgs.hyprland}/bin/hyprctl";
     state = "${config.xdg.stateHome}/minimap.json";

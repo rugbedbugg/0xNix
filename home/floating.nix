@@ -6,12 +6,13 @@ let
   geometry = import ./overlay-geometry.nix { inherit (config.desktop) screen; };
   # The work area the windows are centred in. The values are whole pixels, for
   # the same reason as in overlay-geometry.nix: centring an odd size would
-  # land on a half pixel. The bar's exclusive zone pushes the area down.
+  # land on a half pixel. The bars' exclusive zones push the area down and pull
+  # it up.
   area = {
     x = 0;
     y = geometry.bar;
     width = config.desktop.screen.width;
-    height = config.desktop.screen.height - geometry.bar;
+    height = config.desktop.screen.height - geometry.bar - geometry.bottomBar;
   };
   values = {
     # A window is this share of the work area wide. Its height is this share

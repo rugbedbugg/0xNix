@@ -49,6 +49,8 @@ SCREEN_WIDTH = int("@screenWidth@")
 SCREEN_HEIGHT = int("@screenHeight@")
 # The bar on top of the screen. The top slots stay clear of it.
 BAR = int("@bar@")
+# The bar at the bottom. The bottom slots and the drag limit stay clear of it.
+BOTTOM_BAR = int("@bottomBar@")
 GRIM = "@grim@"
 HYPRCTL = "@hyprctl@"
 STATE = "@state@"
@@ -103,7 +105,7 @@ def slots(outer_w, outer_h):
     left = PAD
     right = SCREEN_WIDTH - PAD - outer_w
     top = BAR + PAD
-    bottom = SCREEN_HEIGHT - PAD - outer_h
+    bottom = SCREEN_HEIGHT - BOTTOM_BAR - PAD - outer_h
 
     def lerp(a, b, i):
         return math.floor(a + (b - a) * i / 4 + 0.5)
@@ -458,7 +460,7 @@ class Minimap:
         new_y = round(self.drag_margin[1] + y - self.drag_cursor[1])
         self.place(
             clamp(new_x, 0, SCREEN_WIDTH - outer_w),
-            clamp(new_y, 0, SCREEN_HEIGHT - outer_h),
+            clamp(new_y, 0, SCREEN_HEIGHT - BOTTOM_BAR - outer_h),
         )
         return True
 
