@@ -35,4 +35,13 @@ in
     options='decoration = { screen_shader = "" }, debug = { vfr = true, damage_tracking = 2 }'
     ${hyprctl} eval "hl.config({ $options })" >/dev/null
   '';
+
+  # Only the shader, for the moment a screenshot takes the frame. Hyprland
+  # keeps drawing every frame, so a capture never waits for one.
+  hide = pkgs.writeShellScript "crt-hide" ''
+    ${hyprctl} eval 'hl.config({ decoration = { screen_shader = "" } })' >/dev/null
+  '';
+  show = pkgs.writeShellScript "crt-show" ''
+    ${hyprctl} eval 'hl.config({ decoration = { screen_shader = "${shader}" } })' >/dev/null
+  '';
 }

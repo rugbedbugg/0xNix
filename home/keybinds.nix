@@ -25,26 +25,97 @@ let
   # satty doesn't create the save directory itself.
   screenshotDir = "${config.xdg.userDirs.pictures}/Screenshots";
 
-  # The region picker runs inside wayfreeze, which holds the screen as it
-  # was when the key was pressed. slurp takes the pointer and the keyboard,
-  # so without the freeze waybar closes a tooltip and an app closes a menu
-  # before the shot is taken. The frozen frame is what grim captures. The
+  # Region screenshots, as a cycle on one key. The first press freezes the
+  # screen with wayfreeze and starts the slurp picker over it. The second
+  # press thaws the screen and leaves the picker up, so it is still clear
+  # that a shot can be taken. The third press ends the picker, like Escape.
+  # A lock file keeps a second picker from starting while one is up.
+  #
+  # The CRT shader (crt.nix) would end up in the picture. It would also bend
+  # a frozen frame twice, once in the shot and once when it draws the layer.
+  # So the shader is hidden for the moment the frame is taken, and then shown
+  # again. The frozen layer is then bent once, like the live screen. A shot from
+  # the frozen layer is cut out of the full frame taken before. The crop
+  # reads the picker's coordinates as pixels, which holds at a scale of 1.
+  # After a thaw the shot is taken live, with the shader hidden again for a
+  # moment. The shader is shown again at the end, but only if it was on at
+  # the start. wayfreeze runs its after-freeze command through sh, so sh has to
+  # be on the script's PATH.
+  #
+  # slurp takes the pointer and the keyboard, so without the freeze waybar
+  # closes a tooltip and an app closes a menu before the shot is taken. The
   # screen thaws as soon as the shot is on disk, and a cancelled selection
   # thaws it too. The shot goes through a file in the runtime directory
   # because the freeze has to end before satty opens. satty reads it from
   # stdin, so deleting the file afterwards is safe.
+  crt = import ./crt-control.nix { inherit pkgs; };
   screenshotRegion = pkgs.writeShellScript "screenshot-region" ''
-    shot=$(${pkgs.coreutils}/bin/mktemp "$XDG_RUNTIME_DIR/screenshot.XXXXXX.png")
-    geometry=$(${pkgs.slurp}/bin/slurp)
-    [ -n "$geometry" ] && ${pkgs.grim}/bin/grim -g "$geometry" "$shot"
-    ${pkgs.procps}/bin/pkill -x wayfreeze
-    [ -s "$shot" ] && ${app "${config.programs.satty.package}/bin/satty --filename -"} < "$shot"
-    ${pkgs.coreutils}/bin/rm -f "$shot"
+    export PATH=${
+      lib.makeBinPath [
+        pkgs.bash
+        pkgs.coreutils
+        pkgs.procps
+        pkgs.util-linux
+        pkgs.netpbm
+        pkgs.grim
+        pkgs.slurp
+        pkgs.wayfreeze
+      ]
+    }
+    exec 9>"$XDG_RUNTIME_DIR/screenshot.lock"
+    if ! flock -n 9; then
+      pkill -x wayfreeze || pkill -x slurp
+      exit 0
+    fi
+
+    raw=$(mktemp "$XDG_RUNTIME_DIR/screenshot.XXXXXX.ppm")
+    shot=$(mktemp "$XDG_RUNTIME_DIR/screenshot.XXXXXX.png")
+    ready="$XDG_RUNTIME_DIR/screenshot.ready"
+    rm -f "$ready"
+    crt=0
+    ${crt.isOn} && crt=1
+    cleanup() {
+      [ "$crt" = 1 ] && ${crt.show}
+      pkill -x wayfreeze
+      rm -f "$raw" "$shot" "$ready"
+    }
+    trap cleanup EXIT
+
+    if [ "$crt" = 1 ]; then
+      ${crt.hide}
+      sleep 0.05
+    fi
+    wayfreeze --after-freeze-cmd "touch $ready" 9>&- &
+    for _ in $(seq 40); do
+      [ -e "$ready" ] && break
+      sleep 0.05
+    done
+    grim -t ppm "$raw"
+    [ "$crt" = 1 ] && ${crt.show}
+
+    geometry=$(slurp -b '#00000066' -c '#${palette.bare.border}ff' -s '#00000000' -w 2)
+    if [ -n "$geometry" ]; then
+      if pgrep -x wayfreeze >/dev/null; then
+        read -r position size <<<"$geometry"
+        IFS=, read -r x y <<<"$position"
+        IFS=x read -r width height <<<"$size"
+        pamcut -left "$x" -top "$y" -width "$width" -height "$height" "$raw" | pnmtopng >"$shot"
+      else
+        if [ "$crt" = 1 ]; then
+          ${crt.hide}
+          sleep 0.05
+        fi
+        grim -g "$geometry" "$shot"
+        [ "$crt" = 1 ] && ${crt.show}
+      fi
+    fi
+    pkill -x wayfreeze
+    [ -s "$shot" ] && ${app "${config.programs.satty.package}/bin/satty --filename -"} <"$shot" 9>&-
   '';
   screenshot = pkgs.writeShellScript "screenshot" ''
     ${pkgs.coreutils}/bin/mkdir -p "${screenshotDir}"
     if [ "$1" = region ]; then
-      exec ${pkgs.wayfreeze}/bin/wayfreeze --after-freeze-cmd "${screenshotRegion}"
+      exec ${screenshotRegion}
     fi
     ${pkgs.grim}/bin/grim - | ${app "${config.programs.satty.package}/bin/satty --filename -"}
   '';
