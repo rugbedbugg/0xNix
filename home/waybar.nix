@@ -23,7 +23,7 @@ in
       height = 32;
       modules-left = [
         "custom/nix"
-        "hyprland/workspaces"
+        "ext/workspaces"
       ];
       modules-center = [ "custom/clock" ];
       modules-right = [
@@ -37,6 +37,15 @@ in
         "custom/battery"
         "tray"
       ];
+      # The click goes through Wayland's workspace protocol. The
+      # hyprland/workspaces module sends the old `dispatch workspace N`
+      # command, which Hyprland's Lua config rejects, so its buttons do
+      # nothing.
+      "ext/workspaces" = {
+        format = "{name}";
+        on-click = "activate";
+        sort-by-name = true;
+      };
       "custom/clock" = {
         exec = "${scripts.clockStatus}";
         return-type = "json";
