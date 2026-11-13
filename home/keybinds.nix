@@ -338,10 +338,11 @@ in
       -- label bar in waybar-side-bars.nix. The lf file chooser (files.nix)
       -- and the satty screenshot editor get the same frame but open on
       -- whatever workspace is in front.
-      for _, cls in ipairs({"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "org\\.pulseaudio\\.pavucontrol", "filechooser", "com\\.gabm\\.satty"}) do
+      local overlay_classes = {"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "org.pulseaudio.pavucontrol", "filechooser", "com.gabm.satty"}
+      for _, cls in ipairs(overlay_classes) do
         hl.window_rule({
           name = "float-style-" .. cls,
-          match = { class = "^" .. cls .. "$" },
+          match = { class = "^" .. cls:gsub("%.", "\\.") .. "$" },
           float = true,
           size = "${toString geometry.width} ${toString geometry.height}",
           move = "${toString geometry.x} ${toString geometry.y}",
@@ -350,6 +351,20 @@ in
           border_color = "rgba(${palette.bare.border}ee)",
         })
       end
+
+      -- A window keeps the frame it opened with, so a reload that changes the
+      -- frame leaves the open overlays behind. This puts them in the new one,
+      -- flush with the label bar again.
+      hl.on("config.reloaded", function()
+        local is_overlay = {}
+        for _, cls in ipairs(overlay_classes) do is_overlay[cls] = true end
+        for _, w in ipairs(hl.get_windows()) do
+          if w.floating and is_overlay[w.class] then
+            hl.dispatch(hl.dsp.window.resize({ window = "address:" .. w.address, x = ${toString geometry.width}, y = ${toString geometry.height} }))
+            hl.dispatch(hl.dsp.window.move({ window = "address:" .. w.address, x = ${toString geometry.x}, y = ${toString geometry.y} }))
+          end
+        end
+      end)
 
       hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd("${toggleLauncher}"), { release = true, description = "App launcher" })
       hl.bind("SUPER + slash", hl.dsp.exec_cmd("${cheatsheet}"), { description = "This keybind list" })
