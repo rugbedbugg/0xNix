@@ -89,4 +89,9 @@ in
     gtk3.extraCss = named;
     gtk4.extraCss = named + "\n" + variables;
   };
+
+  # The rice has no animations. libadwaita apps, swaync among them, read
+  # this key through the desktop portal and skip their slides and fades.
+  # Its own transition setting and settings.ini do not stop them.
+  dconf.settings."org/gnome/desktop/interface".enable-animations = false;
 }

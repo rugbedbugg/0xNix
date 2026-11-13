@@ -1,5 +1,5 @@
-# Tooltips styled as mako toasts: opaque fill, 2px white border, square
-# corners, 8px padding, same font and size. The GTK theme otherwise gives
+# Tooltips styled as the notification toasts (swaync.nix): opaque fill, 2px
+# white border, square corners, 8px padding, same font and size. The GTK theme otherwise gives
 # them a translucent, rounded, shadowed box. Every bar with tooltips
 # shares these.
 { palette }:

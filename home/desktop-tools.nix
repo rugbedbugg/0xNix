@@ -85,34 +85,6 @@ in
   };
 
   services = {
-    mako = {
-      enable = true;
-      settings = {
-        border-size = 2;
-        border-radius = 0;
-        border-color = "${palette.border}ff";
-        background-color = "${palette.surface}ff";
-        text-color = "${palette.border}ff";
-        font = "VGA 11";
-        # The default top layer sits below the minimap's overlay layer, so
-        # the minimap would cover the toasts. On overlay they share its
-        # layer, and minimap.nix keeps the minimap under them. They also
-        # show above fullscreen windows.
-        layer = "overlay";
-        width = 320;
-        margin = "8";
-        padding = "8";
-        # Auto-dismiss after 5s. Critical alerts are the one exception —
-        # 0 means "never auto-dismiss", consistent with red already being
-        # reserved here for things that need to be acted on, not glanced at.
-        default-timeout = 5000;
-        "urgency=critical" = {
-          border-color = "${palette.alert}ff";
-          text-color = "${palette.alert}ff";
-          default-timeout = 0;
-        };
-      };
-    };
     polkit-gnome.enable = true;
   };
 

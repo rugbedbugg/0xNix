@@ -10,6 +10,7 @@
     ./hyprland.nix
     ./crt.nix
     ./desktop-tools.nix
+    ./swaync.nix
     ./waybar.nix
     ./waybar-side-bars.nix
     ./waybar-bottom.nix

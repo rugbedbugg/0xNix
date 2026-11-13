@@ -17,7 +17,7 @@ let
     ;
   # Where home.packages binaries land, for the apps that apps.nix installs.
   profileBin = "${config.home.profileDirectory}/bin";
-  notify = "${pkgs.mako}/bin/makoctl";
+  swaync = "${config.services.swaync.package}/bin/swaync-client";
   media = "${pkgs.playerctl}/bin/playerctl";
 
   # Full screen or a slurp region, opened in satty to crop and annotate.
@@ -455,8 +455,8 @@ in
       hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd("${toggleLauncher}"), { release = true, description = "App launcher" })
       hl.bind("SUPER + slash", hl.dsp.exec_cmd("${cheatsheet}"), { description = "This keybind list" })
       hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd("${session}"), { description = "Session menu" })
-      hl.bind("SUPER + N", hl.dsp.exec_cmd("${notify} restore"), { description = "Restore last notification" })
-      hl.bind("CTRL + ALT + C", hl.dsp.exec_cmd("${notify} dismiss --all"), { locked = true, description = "Clear notifications" })
+      hl.bind("SUPER + N", hl.dsp.exec_cmd("${swaync} --toggle-panel --skip-wait"), { description = "Notification center" })
+      hl.bind("CTRL + ALT + C", hl.dsp.exec_cmd("${swaync} --close-all --skip-wait"), { locked = true, description = "Clear notifications" })
       hl.bind("SUPER + L", hl.dsp.exec_cmd("${pkgs.systemd}/bin/loginctl lock-session"), { description = "Lock screen" })
 
       hl.bind("Print", hl.dsp.exec_cmd("${screenshot}"), { description = "Screenshot" })
