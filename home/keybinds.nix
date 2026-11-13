@@ -31,16 +31,19 @@ let
   # that a shot can be taken. The third press ends the picker, like Escape.
   # A lock file keeps a second picker from starting while one is up.
   #
-  # The CRT shader (crt.nix) would end up in the picture. It would also bend
-  # a frozen frame twice, once in the shot and once when it draws the layer.
-  # So the shader is hidden for the moment the frame is taken, and then shown
-  # again. The frozen layer is then bent once, like the live screen. A shot from
-  # the frozen layer is cut out of the full frame taken before. The crop
-  # reads the picker's coordinates as pixels, which holds at a scale of 1.
-  # After a thaw the shot is taken live, with the shader hidden again for a
-  # moment. The shader is shown again at the end, but only if it was on at
-  # the start. wayfreeze runs its after-freeze command through sh, so sh has to
-  # be on the script's PATH.
+  # The CRT shader (crt.nix) is part of every capture, so the frozen frame
+  # already has the CRT look. Drawn under the shader, the layer would be bent
+  # twice. So the shader is hidden as the screen freezes and for as long as
+  # it stays frozen. It comes back before the layer goes away, so the live
+  # screen never shows without it. The frozen layer looks the same as the
+  # live screen and nothing blinks.
+  # A shot is cut out of that frame, so it shows the CRT look like the
+  # screen does. The crop reads the picker's coordinates as pixels, which
+  # holds at a scale of 1. The picker's dim layer and the pointer are drawn
+  # without the shader while it is hidden. Thawing shows the shader again, and
+  # a shot taken after a thaw is a live capture, which has the CRT look too.
+  # The shader is only touched if it was on at the start. wayfreeze runs its
+  # after-freeze command through sh, so sh has to be on the script's PATH.
   #
   # slurp takes the pointer and the keyboard, so without the freeze waybar
   # closes a tooltip and an app closes a menu before the shot is taken. The
@@ -64,34 +67,38 @@ let
     }
     exec 9>"$XDG_RUNTIME_DIR/screenshot.lock"
     if ! flock -n 9; then
-      pkill -x wayfreeze || pkill -x slurp
+      if pgrep -x wayfreeze >/dev/null; then
+        [ -e "$XDG_RUNTIME_DIR/screenshot.hidden" ] && ${crt.show}
+        pkill -x wayfreeze
+      else
+        pkill -x slurp
+      fi
       exit 0
     fi
 
     raw=$(mktemp "$XDG_RUNTIME_DIR/screenshot.XXXXXX.ppm")
     shot=$(mktemp "$XDG_RUNTIME_DIR/screenshot.XXXXXX.png")
     ready="$XDG_RUNTIME_DIR/screenshot.ready"
-    rm -f "$ready"
-    crt=0
-    ${crt.isOn} && crt=1
+    hidden="$XDG_RUNTIME_DIR/screenshot.hidden"
+    rm -f "$ready" "$hidden"
     cleanup() {
-      [ "$crt" = 1 ] && ${crt.show}
+      [ -e "$hidden" ] && ${crt.show}
       pkill -x wayfreeze
-      rm -f "$raw" "$shot" "$ready"
+      rm -f "$raw" "$shot" "$ready" "$hidden"
     }
     trap cleanup EXIT
 
-    if [ "$crt" = 1 ]; then
-      ${crt.hide}
-      sleep 0.05
+    after="touch $ready"
+    if ${crt.isOn}; then
+      touch "$hidden"
+      after="${crt.hide}; touch $ready"
     fi
-    wayfreeze --after-freeze-cmd "touch $ready" 9>&- &
+    wayfreeze --after-freeze-cmd "$after" 9>&- &
     for _ in $(seq 40); do
       [ -e "$ready" ] && break
       sleep 0.05
     done
     grim -t ppm "$raw"
-    [ "$crt" = 1 ] && ${crt.show}
 
     geometry=$(slurp -b '#00000066' -c '#${palette.bare.border}ff' -s '#00000000' -w 2)
     if [ -n "$geometry" ]; then
@@ -101,14 +108,11 @@ let
         IFS=x read -r width height <<<"$size"
         pamcut -left "$x" -top "$y" -width "$width" -height "$height" "$raw" | pnmtopng >"$shot"
       else
-        if [ "$crt" = 1 ]; then
-          ${crt.hide}
-          sleep 0.05
-        fi
         grim -g "$geometry" "$shot"
-        [ "$crt" = 1 ] && ${crt.show}
       fi
     fi
+    [ -e "$hidden" ] && ${crt.show}
+    rm -f "$hidden"
     pkill -x wayfreeze
     [ -s "$shot" ] && ${app "${config.programs.satty.package}/bin/satty --filename -"} <"$shot" 9>&-
   '';
