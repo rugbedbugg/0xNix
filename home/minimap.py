@@ -4,9 +4,13 @@
 usage: minimap STABLE-ID ADDRESS
 
 A small live copy of the window with the given Hyprland stableId, drawn on
-the overlay layer so it stays above every window. It sits in one of 16
-slots around the screen edge: five along the top and the bottom (corners
-included) and three along each side. Drag it with the left button and it
+the overlay layer so it stays above every window. It is dressed as a VHS
+camera feed: scanlines, a rolling tracking band and a vignette, a clock and
+the window's size on top, the window's class and workspace below, set inside
+viewfinder corners.
+
+It sits in one of 16 slots around the screen edge: five along the top and the
+bottom (corners included) and three along each side. Drag it with the left button and it
 snaps to the nearest slot on release. The scroll wheel resizes it, and the
 right button opens a menu with "Go to window" and "Stop tracking". It
 closes by itself when the tracked window closes.
@@ -23,6 +27,7 @@ import socket
 import subprocess
 import sys
 
+import cairo
 import gi
 
 gi.require_version("Gdk", "3.0")
@@ -86,6 +91,163 @@ FRAME = Gdk.RGBA()
 FRAME.parse("@border@")
 DIM = Gdk.RGBA()
 DIM.parse("@outline@")
+INK = Gdk.RGBA()
+INK.parse("@text@")
+ALERT = Gdk.RGBA()
+ALERT.parse("@alert@")
+
+# The tape overlay. The text needs this much picture height. A smaller
+# minimap would be mostly text, so it shows the picture and the corner marks
+# only.
+TEXT_MIN_H = 100
+# The CRT look of the feed: dark rows in every few, and a faint band that
+# rolls down once per roll period. The picture is redrawn this many times a
+# second so the band moves.
+FPS = 20
+SCAN_PERIOD = 4
+SCAN_ROWS = 2
+SCAN_ALPHA = 0.3
+ROLL_S = 9.0
+BAND = 12
+BAND_ALPHA = 0.10
+# The vignette: clear in the middle and dark towards the corners.
+VIGNETTE_CLEAR = 0.55
+VIGNETTE_ALPHA = 0.6
+# The corner marks are as thick as the rice's borders and sit in the corners
+# of the surface, like a second border. Each arm is this long. The inset is
+# to the middle of a mark, which leaves 2px of space around it.
+MARK_ARM = 14
+MARK_INSET = 5
+# The text sits inside the angle of the marks, 3px below the horizontal arms
+# and 4px past the vertical ones.
+TEXT_TOP = MARK_INSET + 1 + 3
+TEXT_PAD = MARK_INSET + 1 + 4
+# The least room that is worth a label, which is three letters.
+LABEL_MIN = 24
+
+
+def clock(elapsed):
+    """hh:mm:ss for a time in seconds."""
+    whole = int(elapsed)
+    return f"{whole // 3600:02d}:{whole // 60 % 60:02d}:{whole % 60:02d}"
+
+
+def set_color(cr, color, alpha=1.0):
+    cr.set_source_rgba(color.red, color.green, color.blue, alpha)
+
+
+def text(cr, string, x, y, color, width=None, right=False):
+    """Draw one line of text with its top at y. Returns its pixel size.
+
+    A width makes a longer line end in an ellipsis. Right puts x at the
+    right edge of the text.
+    """
+    layout = PangoCairo.create_layout(cr)
+    layout.set_font_description(Pango.FontDescription("VGA 11"))
+    layout.set_text(string, -1)
+    if width is not None:
+        layout.set_width(max(0, width) * Pango.SCALE)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+    text_w, text_h = layout.get_pixel_size()
+    left = x - text_w if right else x
+    # A dark copy one pixel down and right keeps the text readable on any
+    # picture.
+    cr.move_to(left + 1, y + 1)
+    set_color(cr, Gdk.RGBA(0, 0, 0, 1), 0.8)
+    PangoCairo.show_layout(cr, layout)
+    cr.move_to(left, y)
+    set_color(cr, color)
+    PangoCairo.show_layout(cr, layout)
+    return text_w, text_h
+
+
+def measure(cr, string):
+    """Pixel width of a line of text."""
+    layout = PangoCairo.create_layout(cr)
+    layout.set_font_description(Pango.FontDescription("VGA 11"))
+    layout.set_text(string, -1)
+    return layout.get_pixel_size()[0]
+
+
+def line_height(cr):
+    layout = PangoCairo.create_layout(cr)
+    layout.set_font_description(Pango.FontDescription("VGA 11"))
+    layout.set_text("M", -1)
+    return layout.get_pixel_size()[1]
+
+
+def draw_tape(cr, x, y, w, h, elapsed, label, win_size, workspace):
+    """Draw the VHS overlay over the picture in the box at x, y, w by h."""
+    cr.save()
+    cr.rectangle(x, y, w, h)
+    cr.clip()
+
+    # Scanlines.
+    set_color(cr, Gdk.RGBA(0, 0, 0, 1), SCAN_ALPHA)
+    for row in range(y, y + h, SCAN_PERIOD):
+        cr.rectangle(x, row, w, SCAN_ROWS)
+    cr.fill()
+
+    # The tracking band, from just above the picture to its bottom.
+    band = y - BAND + (elapsed % ROLL_S) / ROLL_S * (h + BAND)
+    set_color(cr, INK, BAND_ALPHA)
+    cr.rectangle(x, band, w, BAND)
+    cr.fill()
+
+    # The vignette, stretched to the shape of the picture.
+    cr.save()
+    cr.translate(x + w / 2, y + h / 2)
+    cr.scale(w, h)
+    vignette = cairo.RadialGradient(0, 0, 0, 0, 0, 0.62)
+    vignette.add_color_stop_rgba(VIGNETTE_CLEAR, 0, 0, 0, 0)
+    vignette.add_color_stop_rgba(1.0, 0, 0, 0, VIGNETTE_ALPHA)
+    cr.set_source(vignette)
+    cr.rectangle(-0.5, -0.5, 1, 1)
+    cr.fill()
+    cr.restore()
+
+    line = line_height(cr)
+    if h >= TEXT_MIN_H:
+        # The top row: the clock on the left and the window's size on the
+        # right. The size is left out when the clock would not fit beside it.
+        # A text that does not fit is left out, not cut.
+        top_row = y + TEXT_TOP
+        live_w = measure(cr, "LIVE ")
+        clock_w = measure(cr, clock(elapsed))
+        room = w - 2 * TEXT_PAD - live_w - clock_w
+        if room >= 0:
+            text(cr, "LIVE ", x + TEXT_PAD, top_row, ALERT)
+            text(cr, clock(elapsed), x + TEXT_PAD + live_w, top_row, INK)
+            if win_size is not None:
+                size = f"{win_size[0]}x{win_size[1]}"
+                if room - 8 >= measure(cr, size):
+                    text(cr, size, x + w - TEXT_PAD, top_row, INK, right=True)
+        # The bottom row: the window's class on the left and the workspace on
+        # the right. The workspace is left out when the class would not fit
+        # whole beside it.
+        bottom_row = y + h - TEXT_TOP - line
+        room = w - 2 * TEXT_PAD
+        if room >= LABEL_MIN:
+            if workspace:
+                short = workspace.removeprefix("special:")
+                for name in (f"Workspace {short}", f"WS {short}"):
+                    name_w = measure(cr, name) + 8
+                    if room - name_w >= measure(cr, label):
+                        text(cr, name, x + w - TEXT_PAD, bottom_row, DIM, right=True)
+                        room -= name_w
+                        break
+            text(cr, label, x + TEXT_PAD, bottom_row, INK, width=room)
+
+    # The viewfinder's corner marks.
+    set_color(cr, FRAME)
+    cr.set_line_width(BORDER)
+    for cx, dx in ((x + MARK_INSET, 1), (x + w - MARK_INSET, -1)):
+        for cy, dy in ((y + MARK_INSET, 1), (y + h - MARK_INSET, -1)):
+            cr.move_to(cx, cy + dy * MARK_ARM)
+            cr.line_to(cx, cy)
+            cr.line_to(cx + dx * MARK_ARM, cy)
+    cr.stroke()
+    cr.restore()
 
 
 def content(size, win_w, win_h):
@@ -222,8 +384,11 @@ class Minimap:
         self.drag_margin = (0, 0)
         self.scroll = 0.0
         self.save_timer = 0
+        self.started = GLib.get_monotonic_time()
         info = next((c for c in hypr_json("j/clients") or [] if c["address"] == address), None)
         self.label = info["class"] if info else "window"
+        self.workspace = info["workspace"]["name"] if info else ""
+        self.ticks = 0
 
         self.window = Gtk.Window()
         self.window.set_title(APP_ID)
@@ -264,6 +429,7 @@ class Minimap:
         self.layout()
         self.window.show_all()
         GLib.timeout_add(0, self.capture)
+        GLib.timeout_add(1000 // FPS, self.tick)
         self.watch_events()
 
     # Geometry.
@@ -298,6 +464,20 @@ class Minimap:
 
     # Drawing.
 
+    def elapsed(self):
+        return (GLib.get_monotonic_time() - self.started) / 1e6
+
+    def tick(self):
+        """Redraw for the clock and the rolling band. Every two seconds it
+        also looks up the workspace, which changes when the window moves."""
+        self.ticks += 1
+        if self.ticks % (2 * FPS) == 0:
+            info = next((c for c in hypr_json("j/clients") or [] if c["address"] == self.address), None)
+            if info is not None:
+                self.workspace = info["workspace"]["name"]
+        self.area.queue_draw()
+        return True
+
     def on_draw(self, _area, cr):
         width, height = self.outer()
         Gdk.cairo_set_source_rgba(cr, SURFACE)
@@ -313,6 +493,8 @@ class Minimap:
             Gdk.cairo_set_source_rgba(cr, DIM)
             cr.move_to((width - text_w) / 2, (height - text_h) / 2)
             PangoCairo.show_layout(cr, layout)
+        known = self.win_size if self.frame is not None else None
+        draw_tape(cr, BORDER, BORDER, width - 2 * BORDER, height - 2 * BORDER, self.elapsed(), self.label, known, self.workspace)
         Gdk.cairo_set_source_rgba(cr, FRAME)
         cr.set_line_width(BORDER)
         cr.rectangle(BORDER / 2, BORDER / 2, width - BORDER, height - BORDER)

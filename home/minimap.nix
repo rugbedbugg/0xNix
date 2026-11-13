@@ -15,6 +15,7 @@ let
   # the screen size and the bar heights.
   script = pkgs.replaceVars ./minimap.py {
     inherit (palette)
+      alert
       border
       outline
       surface
