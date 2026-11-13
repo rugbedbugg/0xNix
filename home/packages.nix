@@ -39,7 +39,6 @@
       ))
     ])
     ++ (with pkgs-unstable; [
-      fastfetch
       awscli2
       # `aws ssm start-session` hands the session to this binary, so it
       # updates together with the CLI.
