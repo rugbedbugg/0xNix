@@ -29,6 +29,7 @@
     ./zathura.nix
     ./zapfast.nix
     ./nvim.nix
+    ./legacy-launcher.nix
   ];
 
   home = {
