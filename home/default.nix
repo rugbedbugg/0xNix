@@ -30,6 +30,7 @@
     ./zapfast.nix
     ./nvim.nix
     ./legacy-launcher.nix
+    ./tmux.nix
   ];
 
   home = {
