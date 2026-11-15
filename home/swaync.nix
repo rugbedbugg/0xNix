@@ -43,7 +43,10 @@ in
     # other underlined text take the link colour instead. The patch also
     # keeps the newest notification at the top of a bottom-anchored center,
     # pins the title above the list and puts the snowflake on the empty
-    # center.
+    # center. It hides a row that only partly fits the list, so no text is
+    # cut at its edges. It also removes a closed notification's row when
+    # animations are off. Without the fix, the row fades out but keeps its
+    # space.
     package = pkgs.swaynotificationcenter.overrideAttrs (old: {
       patches = (old.patches or [ ]) ++ [ ./swaync.patch ];
       postPatch = (old.postPatch or "") + ''
@@ -242,8 +245,11 @@ in
         border-bottom: 2px solid ${palette.border};
       }
 
+      /* Every row is at least as tall as the image, so a summary-only row
+         still holds the close button. */
       ${centerRow} .notification-background .notification .notification-default-action {
         padding: 4px 12px;
+        min-height: 32px;
       }
 
       ${centerRow} .notification-background .notification,
