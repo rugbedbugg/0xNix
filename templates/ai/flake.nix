@@ -13,10 +13,8 @@
       devShells.${system}.default = pkgs.mkShell {
         packages =
           (with pkgs; [
-            git
             pkg-config
             gnumake
-            ripgrep
             uv
             ruff
           ])

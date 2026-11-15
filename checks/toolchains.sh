@@ -53,7 +53,7 @@ cpp | systems)
   printf '#include <stdio.h>\nint main(void) { printf("%%d\\n", 6 * 7); return 0; }\n' >"$task_tmp/main.c"
   if [[ "$suite" == systems ]]; then
     clang "$task_tmp/main.c" -o "$task_tmp/c-check"
-    llvm-nm "$task_tmp/c-check" | rg ' main$'
+    llvm-nm "$task_tmp/c-check" | grep ' main$'
     lldb --version
     valgrind --version
   else
