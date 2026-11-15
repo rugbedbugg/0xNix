@@ -105,7 +105,6 @@ in
   # newer one. checks/qt-theme.nix fails when a second Qt version appears.
   home.packages =
     (with pkgs-unstable; [
-      claude-code
       opencode
       antigravity-cli
       # Codex looks these up on PATH at runtime. It sandboxes commands with
