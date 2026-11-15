@@ -46,7 +46,8 @@ in
     # center. It hides a row that only partly fits the list, so no text is
     # cut at its edges. It also removes a closed notification's row when
     # animations are off. Without the fix, the row fades out but keeps its
-    # space.
+    # space. GetLatestNotification on org.erikreider.swaync.cc returns the
+    # newest notification for the bottom bar's tooltip.
     package = pkgs.swaynotificationcenter.overrideAttrs (old: {
       patches = (old.patches or [ ]) ++ [ ./swaync.patch ];
       postPatch = (old.postPatch or "") + ''

@@ -23,6 +23,7 @@ let
   bluetoothctl = "${pkgs.bluez}/bin/bluetoothctl";
   brightnessctl = "${pkgs.brightnessctl}/bin/brightnessctl";
   swaync = "${config.services.swaync.package}/bin/swaync-client";
+  busctl = "${pkgs.systemd}/bin/busctl";
 
   # The track mpd is playing. The script asks rmpc, the same client as the
   # music overlay, and keeps running when mpd is down or restarts. The note
@@ -152,10 +153,47 @@ let
 
   # The notification center button. swaync-client prints a line on every
   # change. The outer loop starts it again when swaync is not up yet or
-  # restarts, so the button never goes blank.
+  # restarts, so the button never goes blank. The tooltip shows the newest
+  # notification, which the patched swaync returns over D-Bus (swaync.nix).
+  # Tooltips do not wrap, so the script wraps the body at 48 columns and
+  # keeps three lines.
   notificationStatus = pkgs.writeShellScript "waybar-notifications" ''
     export PATH=${statPath}
     ${barHelpers}
+
+    latest() {
+      timeout 2 ${busctl} --user --json=short call org.erikreider.swaync.cc \
+        /org/erikreider/swaync/cc org.erikreider.swaync.cc GetLatestNotification 2>/dev/null \
+        | jq -c '.data[0] | fromjson' 2>/dev/null
+    }
+
+    # Prints the notification as rows: the summary cut at 48 characters,
+    # the body wrapped into at most three lines and the time it arrived.
+    latest_rows() {
+      local json=$1 t when
+      printf '%s' "$json" | jq -r '
+        def cut($w): if length > $w then .[:$w - 1] + "~" else . end;
+        def wrap($w): gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ")
+          | if . == "" then [] else split(" ")
+            | reduce .[] as $x ([];
+                if length == 0 then [$x]
+                elif (.[-1] | length) + 1 + ($x | length) <= $w then .[-1] += " " + $x
+                else . + [$x] end)
+            | map(cut($w)) end;
+        def row($k; $v): ($k + "          ")[:10] + " " + $v;
+        row("App"; .app | cut(48)),
+        row("Summary"; .summary | cut(48)),
+        (.body | wrap(48)
+          | (if length > 3 then .[:3] | .[2] |= (if length < 48 then . + "~" else .[:47] + "~" end) else . end)
+          | to_entries[] | row(if .key == 0 then "Body" else "" end; .value))'
+      t=$(printf '%s' "$json" | jq -r '.time')
+      if [ "$(date -d "@$t" +%F)" = "$(date +%F)" ]; then
+        when=$(date -d "@$t" +%H:%M)
+      else
+        when=$(date -d "@$t" '+%d %b %H:%M')
+      fi
+      row Time "$when"
+    }
 
     while :; do
       ${swaync} --subscribe-waybar 2>/dev/null | while read -r line; do
@@ -163,13 +201,15 @@ let
         alt=$(printf '%s' "$line" | jq -r '.alt // ""')
         count=''${count:-0}
         case "$alt" in
-          dnd*) dnd=on text="Notif DND" class=dnd ;;
-          *) dnd=off text="Notif $count" class=$([ "$count" = 0 ] && echo none || echo some) ;;
+          dnd*) text="Notif DND" class=dnd ;;
+          *) text="Notif $count" class=$([ "$count" = 0 ] && echo none || echo some) ;;
         esac
-        tooltip=$(
-          row Count "$count"
-          row DND "$dnd"
-        )
+        json=$(latest)
+        if [ -n "$json" ] && [ "$(printf '%s' "$json" | jq -r '.time // empty')" ]; then
+          tooltip=$(latest_rows "$json")
+        else
+          tooltip=$(row State "no notifications")
+        fi
         emit "$text" "$tooltip" "$class"
       done
       emit "Notif" "$(row State "swaync is not running")" none
@@ -177,7 +217,98 @@ let
     done
   '';
 
-  # Switch Bluetooth on or off. The module itself only reports the state.
+  # Bluetooth, read from bluetoothctl every three seconds. waybar's own
+  # module only knows the controller's name and address and each
+  # connection's name, address and battery. This also shows the
+  # controller's switches and every paired device. bluetoothctl waits
+  # forever while bluetoothd is down, so each call has a timeout.
+  bluetoothStatus = pkgs.writeShellScript "waybar-bluetooth" ''
+    export PATH=${statPath}
+    ${barHelpers}
+
+    bt() {
+      timeout 2 ${bluetoothctl} "$@" 2>/dev/null
+    }
+
+    # The value of one "Key: value" line in bluetoothctl's output.
+    field() {
+      awk -v k="$1" 'index($0, "\t" k ": ") == 1 { print substr($0, length(k) + 4); exit }'
+    }
+
+    while :; do
+      show=$(bt show)
+      status=$?
+      if [ "$status" = 124 ]; then
+        emit "Bluetooth N/A" "$(row State "bluetoothd is not running")" no-controller
+        sleep 3
+        continue
+      fi
+      if [ -z "$show" ] || printf '%s' "$show" | grep -q "No default controller"; then
+        emit "Bluetooth N/A" "$(row State "no controller")" no-controller
+        sleep 3
+        continue
+      fi
+
+      power=$(printf '%s' "$show" | field PowerState)
+      [ -n "$power" ] || power=$(printf '%s' "$show" | field Powered | awk '{ print ($1 == "yes") ? "on" : "off" }')
+      controller=$(
+        row Controller "$(printf '%s' "$show" | field Alias)"
+        row Address "$(printf '%s' "$show" | awk 'NR == 1 { print $2 }')"
+        row Power "$power"
+        row Visible "$(printf '%s' "$show" | field Discoverable)"
+        row Pairable "$(printf '%s' "$show" | field Pairable)"
+        row Scanning "$(printf '%s' "$show" | field Discovering)"
+      )
+
+      text= class=
+      connected=$(
+        label=Connected
+        bt devices Connected | while read -r _ addr name; do
+          info=$(bt info "$addr")
+          battery=$(printf '%s' "$info" | awk -F'[()]' '/^\tBattery Percentage:/ { print $2; exit }')
+          icon=$(printf '%s' "$info" | field Icon)
+          row "$label" "$(cell "$name") $addr''${battery:+  $battery%}''${icon:+  ''${icon#*-}}"
+          label=
+        done
+      )
+      paired=$(
+        label=Paired
+        bt devices Paired | while read -r _ addr name; do
+          bt info "$addr" | grep -q $'^\tConnected: yes' && continue
+          row "$label" "$(cell "$name") $addr"
+          label=
+        done
+      )
+
+      case "$power" in
+        on)
+          if [ -n "$connected" ]; then
+            first=$(bt devices Connected | awk 'NR == 1 { print $2 }')
+            name=$(bt info "$first" | field Alias)
+            battery=$(bt info "$first" | awk -F'[()]' '/^\tBattery Percentage:/ { print $2; exit }')
+            text="Bluetooth $name''${battery:+ $battery%}" class=connected
+          else
+            text="Bluetooth ON" class=on
+          fi
+          ;;
+        off-blocked) text="Bluetooth OFF" class=disabled ;;
+        *) text="Bluetooth OFF" class=off ;;
+      esac
+
+      tooltip=$(
+        printf '%s\n' "$controller"
+        if [ -n "$connected" ] || [ -n "$paired" ]; then
+          echo
+          [ -n "$connected" ] && printf '%s\n' "$connected"
+          [ -n "$paired" ] && printf '%s\n' "$paired"
+        fi
+      )
+      emit "$text" "$tooltip" "$class"
+      sleep 3
+    done
+  '';
+
+  # Switch Bluetooth on or off. The module only reports the state.
   toggleBluetooth = pkgs.writeShellScript "toggle-bluetooth" ''
     if ${bluetoothctl} show | ${pkgs.gnugrep}/bin/grep -q 'Powered: yes'; then
       ${bluetoothctl} power off
@@ -197,7 +328,7 @@ let
       modules-right = [
         "custom/temp"
         "custom/brightness"
-        "bluetooth"
+        "custom/bluetooth"
         "power-profiles-daemon"
         "custom/notification"
       ];
@@ -223,37 +354,23 @@ let
         on-scroll-up = "${brightnessctl} set 1%+";
         on-scroll-down = "${brightnessctl} --min-value=1 set 1%-";
       };
-      # The tooltips line their values up in the same columns as the
-      # scripts' rows.
-      bluetooth = {
-        format = "Bluetooth {status}";
-        format-on = "Bluetooth ON";
-        format-off = "Bluetooth OFF";
-        format-disabled = "Bluetooth OFF";
-        format-no-controller = "Bluetooth N/A";
-        format-connected = "Bluetooth {device_alias}";
-        format-connected-battery = "Bluetooth {device_alias} {device_battery_percentage}%";
+      "custom/bluetooth" = {
+        exec = "${bluetoothStatus}";
+        return-type = "json";
         max-length = 26;
-        tooltip-format = "Controller {controller_alias}\nAddress    {controller_address}\nDevices    none connected";
-        tooltip-format-off = "Controller {controller_alias}\nState      off";
-        tooltip-format-disabled = "State      blocked by rfkill";
-        tooltip-format-no-controller = "State      no controller";
-        tooltip-format-connected = "Controller {controller_alias}\nAddress    {controller_address}\nDevices    {num_connections} connected\n\n{device_enumerate}";
-        tooltip-format-enumerate-connected = "{device_alias}  {device_address}";
-        tooltip-format-enumerate-connected-battery = "{device_alias}  {device_battery_percentage}%";
         on-click = "${toggleBluetooth}";
       };
       # A click cycles through the profiles, which is the module's own
       # behaviour.
       power-profiles-daemon = {
-        format = "Power {icon}";
+        format = "Mode {icon}";
         format-icons = {
           performance = "Perf";
           balanced = "Bal";
           power-saver = "Save";
           default = "?";
         };
-        tooltip-format = "Profile    {profile}\nDriver     {driver}";
+        tooltip = false;
       };
       "custom/notification" = {
         exec = "${notificationStatus}";
@@ -268,7 +385,7 @@ let
   bottomBarStyle = pkgs.writeText "waybar-bottom-style.css" ''
     * { font-family: "VGA", monospace; font-size: 13px; border-radius: 0; }
     window#waybar { background: ${palette.surface}; color: ${palette.text}; border-top: 2px solid ${palette.border}; }
-    #window, #custom-music, #custom-temp, #custom-brightness, #bluetooth, #power-profiles-daemon, #custom-notification { padding: 0 10px; }
+    #window, #custom-music, #custom-temp, #custom-brightness, #custom-bluetooth, #power-profiles-daemon, #custom-notification { padding: 0 10px; }
     /* The readings take the top bar's stat hues in the same order, from
        CPU through GPU. Grey marks anything that is off. A hot CPU turns
        yellow, then red. */
@@ -276,9 +393,9 @@ let
     #custom-temp.warning { color: ${palette.disk}; }
     #custom-temp.critical { color: ${palette.alert}; }
     #custom-brightness { color: ${palette.memory}; }
-    #bluetooth { color: ${palette.swap}; }
+    #custom-bluetooth { color: ${palette.swap}; }
     #power-profiles-daemon { color: ${palette.gpu}; }
-    #custom-music.off, #bluetooth.off, #bluetooth.disabled, #bluetooth.no-controller, #custom-notification.none, #custom-notification.dnd { color: ${palette.outline}; }
+    #custom-music.off, #custom-bluetooth.off, #custom-bluetooth.disabled, #custom-bluetooth.no-controller, #custom-notification.none, #custom-notification.dnd { color: ${palette.outline}; }
     /* The same 2px white rule as every border in the rice, between the
        readings and the notification button. */
     #custom-notification { border-left: 2px solid ${palette.border}; }

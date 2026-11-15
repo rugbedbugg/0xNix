@@ -58,7 +58,7 @@ index 7c2480e..10503f9 100644
              }
              // Fit the ControlCenter to the monitor height
 diff --git a/src/controlCenter/widgets/notifications/notifications.vala b/src/controlCenter/widgets/notifications/notifications.vala
-index 5057495..d17d39b 100644
+index 5057495..1e0f2df 100644
 --- a/src/controlCenter/widgets/notifications/notifications.vala
 +++ b/src/controlCenter/widgets/notifications/notifications.vala
 @@ -30,6 +30,7 @@ namespace SwayNotificationCenter.Widgets {
@@ -126,8 +126,38 @@ index 5057495..d17d39b 100644
                  navigate_to_first_notification ();
  
                  foreach (unowned Gtk.Widget w in list_box_controller.get_children ()) {
+@@ -104,6 +145,29 @@ namespace SwayNotificationCenter.Widgets {
+             stack.set_vhomogeneous (this.vertical_expand);
+         }
+ 
++        /** The newest notification that is not being dismissed */
++        public unowned Notification ?get_latest_notification () {
++            unowned Notification ?latest = null;
++            foreach (unowned Gtk.Widget w in list_box_controller.get_children ()) {
++                unowned NotificationGroup ?group = (NotificationGroup) w;
++                if (group == null || group.dismissed) {
++                    continue;
++                }
++                unowned Notification ?noti = group.get_latest_notification ();
++                if (noti == null) {
++                    continue;
++                }
++                // Times are whole seconds, so the higher ID breaks a tie
++                if (latest == null
++                    || noti.param.time > latest.param.time
++                    || (noti.param.time == latest.param.time
++                        && noti.param.applied_id > latest.param.applied_id)) {
++                    latest = noti;
++                }
++            }
++            return latest;
++        }
++
+         public inline bool is_empty () {
+             return n_notifications == 0;
+         }
 diff --git a/src/notification/notification.vala b/src/notification/notification.vala
-index 3d2bfa3..5ecfe77 100644
+index 3d2bfa3..6bbf535 100644
 --- a/src/notification/notification.vala
 +++ b/src/notification/notification.vala
 @@ -91,7 +91,32 @@ namespace SwayNotificationCenter {
@@ -191,7 +221,7 @@ index 3d2bfa3..5ecfe77 100644
                  }
              } catch (Error e) {
                  stderr.printf ("Could not parse Pango markup %s: %s\n",
-@@ -402,6 +429,45 @@ namespace SwayNotificationCenter {
+@@ -402,6 +429,50 @@ namespace SwayNotificationCenter {
              this.body.set_visible (this.body.get_text ().length > 0);
          }
  
@@ -234,10 +264,15 @@ index 3d2bfa3..5ecfe77 100644
 +            return result;
 +        }
 +
++        /** The body as shown, with its markup already applied */
++        public string get_body_text () {
++            return body.get_text ();
++        }
++
          /** Returns the first code found, else null */
          private string ?parse_body_codes () {
              if (!ConfigModel.instance.notification_2fa_action) {
-@@ -660,6 +726,9 @@ namespace SwayNotificationCenter {
+@@ -660,6 +731,9 @@ namespace SwayNotificationCenter {
          public async void remove_notification (bool animated) {
              // Disable animation when dismissed by swipe
              animated &= !dismissed_by_swipe && get_mapped ();
@@ -264,3 +299,43 @@ index b0f7efa..8749a74 100644
                  remove_animation_done_id = remove_animation.done.connect ((e) => {
                      play_remove_animation.callback ();
                  });
+diff --git a/src/swayncDaemon/swayncDaemon.vala b/src/swayncDaemon/swayncDaemon.vala
+index db49770..32ca16e 100644
+--- a/src/swayncDaemon/swayncDaemon.vala
++++ b/src/swayncDaemon/swayncDaemon.vala
+@@ -54,6 +54,35 @@ namespace SwayNotificationCenter {
+         [Version (deprecated = true, replacement = "SwayncDaemon.subscribe_v2")]
+         public signal void subscribe (uint count, bool dnd, bool cc_open);
+ 
++        /**
++         * Returns the newest notification in the control center as a JSON
++         * object with its app, summary, body and Unix time. Returns an
++         * empty object when there is none.
++         */
++        [DBus (name = "GetLatestNotification")]
++        public string get_latest_notification () throws DBusError, IOError {
++            var builder = new Json.Builder ();
++            builder.begin_object ();
++            unowned Notification ?noti = notifications_widget.get_latest_notification ();
++            if (noti != null) {
++                NotifyParams param = noti.param;
++                string app = param.display_name;
++                if (app == null || app.length == 0) {
++                    app = param.app_name ?? "";
++                }
++                builder.set_member_name ("app");
++                builder.add_string_value (app);
++                builder.set_member_name ("summary");
++                builder.add_string_value (param.summary ?? "");
++                builder.set_member_name ("body");
++                builder.add_string_value (noti.get_body_text ());
++                builder.set_member_name ("time");
++                builder.add_int_value (param.time);
++            }
++            builder.end_object ();
++            return Json.to_string (builder.get_root (), false);
++        }
++
+         /** Reloads the CSS file */
+         public bool reload_css () throws Error {
+             bool result = Functions.load_css (style_path);
