@@ -260,21 +260,23 @@ let
         row Scanning "$(printf '%s' "$show" | field Discovering)"
       )
 
-      text= class=
-      connected=$(
-        label=Connected
-        bt devices Connected | while read -r _ addr name; do
-          info=$(bt info "$addr")
-          battery=$(printf '%s' "$info" | awk -F'[()]' '/^\tBattery Percentage:/ { print $2; exit }')
-          icon=$(printf '%s' "$info" | field Icon)
-          row "$label" "$(cell "$name") $addr''${battery:+  $battery%}''${icon:+  ''${icon#*-}}"
-          label=
-        done
-      )
+      # One info call per connected device. The first one names the bar.
+      online=$(bt devices Connected)
+      connected= first=
+      label=Connected
+      while read -r _ addr name; do
+        [ -n "$addr" ] || continue
+        info=$(bt info "$addr")
+        battery=$(printf '%s' "$info" | awk -F'[()]' '/^\tBattery Percentage:/ { print $2; exit }')
+        icon=$(printf '%s' "$info" | field Icon)
+        [ -n "$first" ] || first="$name''${battery:+ $battery%}"
+        connected+="$(row "$label" "$(cell "$name") $addr''${battery:+  $battery%}''${icon:+  ''${icon#*-}}")"$'\n'
+        label=
+      done <<<"$online"
       paired=$(
         label=Paired
         bt devices Paired | while read -r _ addr name; do
-          bt info "$addr" | grep -q $'^\tConnected: yes' && continue
+          printf '%s' "$online" | grep -q " $addr " && continue
           row "$label" "$(cell "$name") $addr"
           label=
         done
@@ -282,11 +284,8 @@ let
 
       case "$power" in
         on)
-          if [ -n "$connected" ]; then
-            first=$(bt devices Connected | awk 'NR == 1 { print $2 }')
-            name=$(bt info "$first" | field Alias)
-            battery=$(bt info "$first" | awk -F'[()]' '/^\tBattery Percentage:/ { print $2; exit }')
-            text="Bluetooth $name''${battery:+ $battery%}" class=connected
+          if [ -n "$first" ]; then
+            text="Bluetooth $first" class=connected
           else
             text="Bluetooth ON" class=on
           fi
@@ -299,7 +298,7 @@ let
         printf '%s\n' "$controller"
         if [ -n "$connected" ] || [ -n "$paired" ]; then
           echo
-          [ -n "$connected" ] && printf '%s\n' "$connected"
+          [ -n "$connected" ] && printf '%s' "$connected"
           [ -n "$paired" ] && printf '%s\n' "$paired"
         fi
       )
