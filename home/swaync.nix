@@ -1,17 +1,32 @@
-# Notifications through SwayNotificationCenter. Toasts show at the top right
-# and behave as mako's did: text only, no buttons, 320px wide with 8px
-# margins and padding, gone after five seconds. The notification center opens
-# from the bottom bar's rightmost button (waybar-bottom.nix) or Super + N. It
-# lists every notification with an X to close each one and a button that
-# clears them all.
+# Notifications through SwayNotificationCenter. Toasts show at the top right:
+# no buttons, 320px wide with 8px margins and padding, gone after five
+# seconds. A toast shows the notification's image, or else its app's icon,
+# in a square as tall as a summary and one body line. Its body stops at three
+# lines. The notification center opens from the bottom bar's rightmost
+# button (waybar-bottom.nix) or Super + N. It lists every notification,
+# newest first, with an X to close each one and a button that clears them
+# all. Empty, it shows a grey NixOS snowflake.
 #
 # The look matches the rest of the rice: opaque palette fill, 2px white
 # border, square corners, the VGA font at 11pt, reverse video on hover and no
 # animations. Critical notifications take the alert colour and stay until
 # closed.
-{ config, palette, ... }:
+{
+  config,
+  pkgs,
+  palette,
+  ...
+}:
 let
   package = config.services.swaync.package;
+
+  # The NixOS snowflake in the disabled grey, for the empty center. The
+  # white logo shades each lambda with white gradients. Recolouring them
+  # keeps the shading.
+  emptyIcon = pkgs.runCommand "nix-snowflake-outline.svg" { } ''
+    sed 's/#ffffff/${palette.outline}/g' \
+      ${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake-white.svg > $out
+  '';
 
   # The default stylesheet nests every notification rule this deep.
   notification = ".notification-row .notification-background .notification";
@@ -22,6 +37,22 @@ in
 {
   services.swaync = {
     enable = true;
+    # No setting covers these, so a patch does. It caps a toast's body at
+    # three lines and turns HTML and Markdown in a body into Pango markup.
+    # The VGA font draws its underline on the line below, so links and
+    # other underlined text take the link colour instead. The patch also
+    # keeps the newest notification at the top of a bottom-anchored center,
+    # pins the title above the list and puts the snowflake on the empty
+    # center.
+    package = pkgs.swaynotificationcenter.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [ ./swaync.patch ];
+      postPatch = (old.postPatch or "") + ''
+        substituteInPlace data/ui/notifications_widget.blp \
+          --replace-fail "@emptyIcon@" "${emptyIcon}"
+        substituteInPlace src/notification/notification.vala \
+          --replace-fail "@underlineColour@" "${palette.nix}"
+      '';
+    });
     settings = {
       positionX = "right";
       positionY = "top";
@@ -62,6 +93,7 @@ in
       };
       notification-2fa-action = false;
       notification-inline-replies = false;
+      text-empty = "No notifications";
       widgets = [
         "title"
         "notifications"
@@ -75,8 +107,7 @@ in
     # The default stylesheet holds the layout. The rules after it set the
     # rice's colours, borders, corners, font and spacing. VGA has no bold
     # weight, so GTK fakes bold by smearing each glyph. Every label stays at
-    # normal weight. Icons are sized to nothing, so toasts carry text only,
-    # as mako's did.
+    # normal weight.
     style = ''
       @import url("${package}/etc/xdg/swaync/style.css");
 
@@ -93,7 +124,9 @@ in
         --border: 2px solid ${palette.border};
         --border-radius: 0;
         --notification-shadow: none;
-        --notification-icon-size: 0;
+        /* A summary line and one body line of the 16px VGA font. */
+        --notification-icon-size: 32px;
+        --notification-app-icon-size: 0;
         --notification-group-icon-size: 0;
         --font-size-body: 11pt;
         --font-size-summary: 11pt;
@@ -128,7 +161,13 @@ in
         padding: 8px;
       }
 
-      ${action} .notification-content .image,
+      ${action} .notification-content .image {
+        margin: 0 8px 0 0;
+        border-radius: 0;
+      }
+
+      /* Hide the app icon that swaync badges onto a notification's own
+         image. */
       ${action} .notification-content .app-icon {
         margin: 0;
         min-width: 0;
@@ -175,17 +214,34 @@ in
         border: 2px solid ${palette.border};
       }
 
+      /* An outline takes no space, so the panel's content fills its 600px
+         exactly and has nothing to scroll. */
       .control-center {
-        border: 2px solid ${palette.border};
+        outline: 2px solid ${palette.border};
+        outline-offset: -2px;
       }
 
-      /* In the center, the panel's own border frames the list. Each
-         notification sits on the panel without a box, and margins keep
-         them apart. The one under the pointer turns to reverse video, as a
-         hovered menu item does. */
+      /* The center is laid out as the bars are: a 32px title row and one
+         row per notification, each closed by a 2px white rule. Clear all
+         is a segment at the right end of the title row. The row under the
+         pointer turns to reverse video, as a hovered menu item does. */
+      .control-center .widget {
+        margin: 0;
+        padding: 0;
+      }
+
+      .widget-title {
+        border-bottom: 2px solid ${palette.border};
+      }
+
       ${centerRow} .notification-background {
         padding: 0;
-        margin: 6px 12px;
+        margin: 0;
+        border-bottom: 2px solid ${palette.border};
+      }
+
+      ${centerRow} .notification-background .notification .notification-default-action {
+        padding: 4px 12px;
       }
 
       ${centerRow} .notification-background .notification,
@@ -207,7 +263,14 @@ in
         color: ${palette.outline};
       }
 
-      /* The list scrolls with the wheel and shows no scrollbar. */
+      /* The list scrolls with the wheel and shows no scrollbar. Its ends
+         draw no glow. */
+      .control-center overshoot,
+      .control-center undershoot {
+        background: none;
+        box-shadow: none;
+      }
+
       .control-center scrollbar,
       .control-center scrollbar slider {
         opacity: 0;
@@ -219,14 +282,22 @@ in
 
       .widget-title > label {
         font-size: 11pt;
+        margin: 0;
+        padding: 0 12px;
       }
 
       .widget-title > button {
         background: ${palette.surface};
         color: ${palette.border};
-        border: 2px solid ${palette.border};
+        border: none;
+        border-left: 2px solid ${palette.border};
         border-radius: 0;
-        padding: 2px 10px;
+        margin: 0;
+        min-height: 0;
+        /* swaync centres the button vertically. Padding around the 16px
+           line makes it the full 30px above the rule, so its divider runs
+           the row's height. */
+        padding: 7px 10px;
       }
 
       .widget-title > button:hover {

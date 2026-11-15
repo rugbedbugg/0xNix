@@ -1,0 +1,170 @@
+diff --git a/data/ui/control_center.blp b/data/ui/control_center.blp
+index 02064cd..d1d44a5 100644
+--- a/data/ui/control_center.blp
++++ b/data/ui/control_center.blp
+@@ -9,6 +9,8 @@ template $SwayNotificationCenterControlCenter: ApplicationWindow {
+ 
+   ScrolledWindow window {
+     hscrollbar-policy: never;
++    // Only the notification list scrolls. The widgets above it stay put.
++    vscrollbar-policy: never;
+     overflow: hidden;
+ 
+     styles [
+diff --git a/data/ui/notification.blp b/data/ui/notification.blp
+index d37a210..17c3584 100644
+--- a/data/ui/notification.blp
++++ b/data/ui/notification.blp
+@@ -51,10 +51,10 @@ template $SwayNotificationCenterNotification: Adw.Bin {
+                 // Box with images/icons
+                 Overlay {
+                   halign: center;
+-                  valign: center;
++                  valign: start;
+ 
+                   child: Image img {
+-                    valign: center;
++                    valign: start;
+                     overflow: hidden;
+ 
+                     styles [
+diff --git a/data/ui/notifications_widget.blp b/data/ui/notifications_widget.blp
+index 582c9d0..c684cc2 100644
+--- a/data/ui/notifications_widget.blp
++++ b/data/ui/notifications_widget.blp
+@@ -49,8 +49,7 @@ template $SwayNotificationCenterWidgetsNotifications: $SwayNotificationCenterWid
+ 
+         Image {
+           pixel-size: 96;
+-          icon-name: "preferences-system-notifications-symbolic";
+-          use-fallback: true;
++          file: "@emptyIcon@";
+         }
+ 
+         Label text_empty_label {
+diff --git a/src/controlCenter/controlCenter.vala b/src/controlCenter/controlCenter.vala
+index 7c2480e..10503f9 100644
+--- a/src/controlCenter/controlCenter.vala
++++ b/src/controlCenter/controlCenter.vala
+@@ -344,8 +344,8 @@ namespace SwayNotificationCenter {
+                     break;
+                 case PositionY.BOTTOM:
+                     align_y = Gtk.Align.END;
+-                    // Set cc widget position
+-                    notifications_widget.set_list_is_reversed (true);
++                    // Keep the newest notification at the top
++                    notifications_widget.set_list_is_reversed (false);
+                     break;
+             }
+             // Fit the ControlCenter to the monitor height
+diff --git a/src/notification/notification.vala b/src/notification/notification.vala
+index 3d2bfa3..f8d2f09 100644
+--- a/src/notification/notification.vala
++++ b/src/notification/notification.vala
+@@ -91,7 +91,32 @@ namespace SwayNotificationCenter {
+         private static Regex tag_regex;
+         private static Regex tag_unescape_regex;
+         private static Regex img_tag_regex;
+-        private const string[] TAGS = { "b", "u", "i" };
++        private const string[] TAGS = { "b", "u", "i", "s", "tt" };
++        // Pairs of a pattern and its replacement. They turn the HTML and
++        // Markdown that some apps send into the bare tags in TAGS, which
++        // the body parser keeps even when the rest is not valid markup.
++        private const string[] RICH_TEXT_RULES = {
++            // HTML
++            "<br\\s*/?>", "\n",
++            "</p>\\s*<p\\b[^>]*>", "\n",
++            "</?(?:p|div|ul|ol|li|font|blockquote|pre|h[1-6])\\b[^>]*>", "",
++            "<(/?)strong>", "<\\g<1>b>",
++            "<(/?)em>", "<\\g<1>i>",
++            "<(/?)code>", "<\\g<1>tt>",
++            "<(/?)(?:del|strike)>", "<\\g<1>s>",
++            "<a\\b[^>]*>(.*?)</a>", "<u>\\g<1></u>",
++            "&nbsp;", " ",
++            // Markdown. Emphasis needs a non-space inside each marker and no
++            // word character outside it, so snake_case and 5 * 3 stay plain.
++            "`([^`\n]+)`", "<tt>\\g<1></tt>",
++            "\\[([^\\]\n]+)\\]\\([^)\\s]+\\)", "<u>\\g<1></u>",
++            "\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*", "<b>\\g<1></b>",
++            "(?<!\\w)__(?=\\S)(.+?)(?<=\\S)__(?!\\w)", "<b>\\g<1></b>",
++            "~~(?=\\S)(.+?)(?<=\\S)~~", "<s>\\g<1></s>",
++            "(?<![\\w*])\\*(?=[^\\s*])(.+?)(?<=[^\\s*])\\*(?![\\w*])", "<i>\\g<1></i>",
++            "(?<!\\w)_(?=[^\\s_])(.+?)(?<=[^\\s_])_(?!\\w)", "<i>\\g<1></i>",
++            "^#{1,6}[ \\t]+(.+)$", "<b>\\g<1></b>",
++        };
+         private const string[] UNESCAPE_CHARS = {
+             "lt;", "#60;", "#x3C;", "#x3c;", // <
+             "gt;", "#62;", "#x3E;", "#x3e;", // >
+@@ -124,7 +149,7 @@ namespace SwayNotificationCenter {
+                     timeout_delay: timeout,
+                     timeout_low_delay: timeout_low,
+                     timeout_critical_delay: timeout_critical,
+-                    number_of_body_lines: 5
++                    number_of_body_lines: 3
+             );
+             this.param = param;
+             build_noti ();
+@@ -362,6 +387,8 @@ namespace SwayNotificationCenter {
+                 }
+             }
+ 
++            text = rich_text_to_markup (text);
++
+             // Markup
+             try {
+                 Pango.AttrList ?attr = null;
+@@ -390,7 +417,7 @@ namespace SwayNotificationCenter {
+ 
+                 this.body.set_text (buf);
+                 if (attr != null) {
+-                    this.body.set_attributes (attr);
++                    this.body.set_attributes (recolour_underlines (attr));
+                 }
+             } catch (Error e) {
+                 stderr.printf ("Could not parse Pango markup %s: %s\n",
+@@ -402,6 +429,45 @@ namespace SwayNotificationCenter {
+             this.body.set_visible (this.body.get_text ().length > 0);
+         }
+ 
++        // Bitmap fonts can place the underline a row too low, onto the next
++        // line. Links and other underlined text take a colour instead.
++        private static Pango.AttrList recolour_underlines (Pango.AttrList attrs) {
++            Pango.Color colour = {};
++            if (!colour.parse ("@underlineColour@")) {
++                return attrs;
++            }
++            var result = new Pango.AttrList ();
++            foreach (unowned Pango.Attribute attr in attrs.get_attributes ()) {
++                if (attr.klass.type != Pango.AttrType.UNDERLINE) {
++                    result.insert (attr.copy ());
++                    continue;
++                }
++                Pango.Attribute fg = Pango.attr_foreground_new (
++                    colour.red, colour.green, colour.blue);
++                fg.start_index = attr.start_index;
++                fg.end_index = attr.end_index;
++                result.insert ((owned) fg);
++            }
++            return result;
++        }
++
++        private static string rich_text_to_markup (string text) {
++            string result = text;
++            for (int i = 0; i + 1 < RICH_TEXT_RULES.length; i += 2) {
++                try {
++                    var regex = new Regex (RICH_TEXT_RULES[i],
++                                           RegexCompileFlags.CASELESS
++                                           | RegexCompileFlags.MULTILINE);
++                    result = regex.replace (result, result.length, 0,
++                                            RICH_TEXT_RULES[i + 1]);
++                } catch (RegexError e) {
++                    stderr.printf ("Invalid regex %s: %s\n",
++                                   RICH_TEXT_RULES[i], e.message);
++                }
++            }
++            return result;
++        }
++
+         /** Returns the first code found, else null */
+         private string ?parse_body_codes () {
+             if (!ConfigModel.instance.notification_2fa_action) {
