@@ -72,10 +72,15 @@
     entry, spinbutton { background: ${palette.surface}; color: ${palette.border}; border: 2px solid ${palette.border}; border-radius: 0; }
     entry:focus-within, spinbutton:focus-within { box-shadow: inset 0 0 0 2px ${palette.border}; }
 
-    popover > contents, popover.menu > contents { background: ${palette.surface}; color: ${palette.border}; border: 2px solid ${palette.border}; border-radius: 0; padding: 0; }
-    popover > arrow { background: transparent; border: none; }
-    popover row, popover modelbutton { color: ${palette.border}; padding: 4px 12px; }
-    popover row:hover, popover row:selected, popover modelbutton:hover { background: ${palette.text}; color: ${palette.surface}; }
+    /* GTK's default theme pads a menu's contents by 5px and gives the
+       item under the pointer a dark, rounded :selected or :hover fill.
+       Its selectors are more specific than plain popover rules, so these
+       name popover.menu.background and modelbutton.flat to win. The item
+       then fills the menu from border to border in reverse video. */
+    popover > contents, popover.menu > contents, popover.menu.background > contents { background: ${palette.surface}; color: ${palette.border}; border: 2px solid ${palette.border}; border-radius: 0; padding: 0; }
+    popover > arrow, popover.menu > arrow { background: transparent; border: none; }
+    popover row, popover modelbutton, popover.menu modelbutton, popover.menu modelbutton.flat { color: ${palette.border}; border-radius: 0; padding: 4px 12px; min-height: 0; }
+    popover row:hover, popover row:selected, popover.menu modelbutton:hover, popover.menu modelbutton:selected, popover.menu modelbutton.flat:hover, popover.menu modelbutton.flat:selected { background: ${palette.text}; color: ${palette.surface}; }
     popover row:hover label, popover row:selected label { color: ${palette.surface}; }
 
     scrollbar { background: transparent; border: none; }
