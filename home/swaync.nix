@@ -236,6 +236,15 @@ in
         padding: 0;
       }
 
+      /* Adwaita pads every list row by 2px and draws its focus outline
+         2px inside the row. The panel focuses the first row when it
+         opens. Both would show as a sliver between a row's fill and the
+         rules. */
+      .control-center .control-center-list > row {
+        padding: 0;
+        outline: none;
+      }
+
       .widget-title {
         border-bottom: 2px solid ${palette.border};
       }

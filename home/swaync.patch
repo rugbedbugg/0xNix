@@ -58,39 +58,41 @@ index 7c2480e..10503f9 100644
              }
              // Fit the ControlCenter to the monitor height
 diff --git a/src/controlCenter/widgets/notifications/notifications.vala b/src/controlCenter/widgets/notifications/notifications.vala
-index 5057495..1e0f2df 100644
+index 5057495..3a88fbb 100644
 --- a/src/controlCenter/widgets/notifications/notifications.vala
 +++ b/src/controlCenter/widgets/notifications/notifications.vala
-@@ -30,6 +30,7 @@ namespace SwayNotificationCenter.Widgets {
+@@ -30,6 +30,8 @@ namespace SwayNotificationCenter.Widgets {
              internal get; private set; default = null;
          }
          private uint scroll_timer_id = 0;
-+        private uint clip_idle_id = 0;
++        private unowned Gdk.FrameClock ?clip_clock = null;
++        private ulong clip_layout_id = 0;
  
          private Gee.HashMap<uint32, unowned NotificationGroup> noti_groups_id =
              new Gee.HashMap<uint32, unowned NotificationGroup> ();
-@@ -56,9 +57,48 @@ namespace SwayNotificationCenter.Widgets {
+@@ -56,9 +58,52 @@ namespace SwayNotificationCenter.Widgets {
  
              list_box.set_valign (Gtk.Align.START);
  
-+            Gtk.Adjustment vadj = scrolled_window.get_vadjustment ();
-+            vadj.value_changed.connect (queue_clip_partial_rows);
-+            vadj.changed.connect (queue_clip_partial_rows);
++            // Check the rows after every layout pass while shown, so the
++            // result always matches the positions on screen
++            map.connect (() => {
++                clip_clock = get_frame_clock ();
++                if (clip_clock != null) {
++                    clip_layout_id = clip_clock.layout.connect (clip_partial_rows);
++                }
++            });
++            unmap.connect (() => {
++                if (clip_clock != null && clip_layout_id > 0) {
++                    clip_clock.disconnect (clip_layout_id);
++                }
++                clip_layout_id = 0;
++                clip_clock = null;
++            });
 +
              reload_config ();
          }
  
-+        private void queue_clip_partial_rows () {
-+            if (clip_idle_id > 0) {
-+                return;
-+            }
-+            // Wait for the rows to take their new positions
-+            clip_idle_id = Idle.add_once (() => {
-+                clip_idle_id = 0;
-+                clip_partial_rows ();
-+            });
-+        }
-+
 +        /**
 +         * Hides each row that only partly fits in the view, so no text is
 +         * cut at the edges. A row taller than the view always shows.
@@ -108,7 +110,10 @@ index 5057495..1e0f2df 100644
 +                float bottom = top + bounds.size.height;
 +                bool fits = (top > -0.5f && bottom < view_height + 0.5f)
 +                    || bounds.size.height > view_height;
-+                row.set_opacity (fits ? 1.0 : 0.0);
++                double opacity = fits ? 1.0 : 0.0;
++                if (row.get_opacity () != opacity) {
++                    row.set_opacity (opacity);
++                }
 +                if (row is NotificationGroup && !((NotificationGroup) row).dismissed) {
 +                    row.set_can_target (fits);
 +                }
@@ -118,15 +123,7 @@ index 5057495..1e0f2df 100644
          // Add/remove the "not-expanded" CSS class to each group
          private void expanded_changed () {
              bool is_expanded = expanded_group != null;
-@@ -77,6 +117,7 @@ namespace SwayNotificationCenter.Widgets {
- 
-         public override void on_cc_visibility_change (bool value) {
-             if (value) {
-+                queue_clip_partial_rows ();
-                 navigate_to_first_notification ();
- 
-                 foreach (unowned Gtk.Widget w in list_box_controller.get_children ()) {
-@@ -104,6 +145,29 @@ namespace SwayNotificationCenter.Widgets {
+@@ -104,6 +149,29 @@ namespace SwayNotificationCenter.Widgets {
              stack.set_vhomogeneous (this.vertical_expand);
          }
  
