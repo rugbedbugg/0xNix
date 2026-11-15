@@ -69,8 +69,10 @@ in
       control-center-margin-top = 8;
       control-center-margin-bottom = 8;
       control-center-margin-right = 8;
-      control-center-width = 420;
-      control-center-height = 600;
+      # As wide as a toast. The height holds the title row and seven
+      # one-line notifications. Longer lists scroll.
+      control-center-width = 320;
+      control-center-height = 360;
       fit-to-screen = false;
       # A toast is 320px wide, as mako's were. The window adds the 8px
       # margin on each side.
@@ -214,7 +216,7 @@ in
         border: 2px solid ${palette.border};
       }
 
-      /* An outline takes no space, so the panel's content fills its 600px
+      /* An outline takes no space, so the panel's content fills its height
          exactly and has nothing to scroll. */
       .control-center {
         outline: 2px solid ${palette.border};
