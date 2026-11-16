@@ -4,8 +4,8 @@
   ...
 }:
 {
-  # Toolchain versions are defined once in devshells/default.nix. Fish is enabled
-  # system-wide so it is registered as a valid login shell.
+  # Fish is enabled system-wide so it is registered as a valid login shell.
+  # Per-project language toolchains live in templates/, not here.
   programs.fish.enable = true;
 
   # Claude Code comes from Anthropic's install script, lives in ~/.local and
