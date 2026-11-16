@@ -1,7 +1,7 @@
 # Loads floating.lua, which opens the windows of the Super + Alt launches
 # (keybinds.nix) as golden rectangles. This module fills in the script's
 # numbers. The script holds the logic and explains it.
-{ config,  lib, ... }:
+{ config, lib, ... }:
 let
   geometry = import ./overlay-geometry.nix { inherit (config.desktop) screen; };
   # The work area the windows are centred in. The values are whole pixels, for

@@ -4,7 +4,7 @@
   xdg.portal = {
     enable = true;
     # File dialogs open lf in a terminal instead of a GTK window. The lf
-    # wrapper and its config live in home/files.nix.
+    # Keep the wrapper beside the file manager configuration.
     extraPortals = [ pkgs.xdg-desktop-portal-termfilechooser ];
     config.hyprland = {
       default = [

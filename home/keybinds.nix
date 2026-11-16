@@ -134,21 +134,26 @@ let
     ${app "${pkgs.fuzzel}/bin/fuzzel"}
   '';
 
+  # SUPER + / cheat sheet, read live from Hyprland so it can't drift from
+  # the real config: every bind with a `description` (hyprland.nix and the
+  # binds below), in config order. Modifiers are decoded from modmask
+  # (SHIFT=1, CTRL=4, ALT=8, SUPER=64). The 1-0 workspace binds collapse to
+  # one row per action, and rows that come out identical are dropped.
+  # Display only; picking a row just closes it. Toggles like the launcher.
+  #
+  # Resolve optional physical key labels from the consuming configuration.
   cheatsheet = pkgs.writeShellScript "keybind-cheatsheet" ''
     if ${pkgs.procps}/bin/pkill -x fuzzel; then
       exit 0
     fi
-    ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
+    ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r --argjson keyNames ${lib.escapeShellArg (builtins.toJSON config.desktop.keyNames)} '
       def mods: . as $m
         | [ {b: 64, n: "SUPER"}, {b: 4, n: "CTRL"}, {b: 8, n: "ALT"}, {b: 1, n: "SHIFT"} ]
         | map(select(($m / .b | floor) % 2 == 1) | .n);
-      def keyname: {
+      def keyname: ({
           "SUPER_L": "(tap)", "slash": "/", "RETURN": "Enter", "Escape": "Esc",
-          "mouse:272": "Left drag", "mouse:273": "Right drag",
-          "XF86AudioMute": "Media key", "XF86AudioLowerVolume": "Media key",
-          "XF86AudioRaiseVolume": "Media key", "XF86MonBrightnessDown": "Media key",
-          "XF86MonBrightnessUp": "Media key", "XF86AudioMicMute": "Media key"
-        }[.] // .;
+          "mouse:272": "Left drag", "mouse:273": "Right drag"
+        } + $keyNames)[.] // .;
       map(select(.has_description))
       | map(
           (.key | test("^[0-9]$")) as $ws
@@ -225,6 +230,7 @@ let
   toggleBtop = mkSpecialToggle {
     class = "btop-special";
     workspace = "btop";
+    # Force UTF-8 rendering when the environment does not advertise it.
     launchCmd = app (footAs "btop-special" "${pkgs-unstable.btop}/bin/btop --force-utf");
   };
 

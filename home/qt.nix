@@ -1,3 +1,19 @@
+# Qt 6 apps in the rice's TTY look, the same as gtk-tty.nix gives GTK4
+# apps: opaque surface-colour fill, 2px white borders, square corners, VGA
+# font. Selected and checked things are in reverse video. Dimmed grey means
+# disabled. Kirigami apps take their colours from
+# kdeglobals.
+#
+# Unlike gtk-tty.nix, no app is wrapped. The theme applies to every Qt app
+# in the session. qt6ct reads it. It takes a palette, a font and a style
+# sheet from plain files, so no theme package is needed. Fusion is Qt's own
+# style and ships with Qt itself, which keeps the look working across Qt
+# updates. The style sheet on top of it draws the borders.
+#
+# Only Qt 6 is themed. Home Manager lists the Qt 5 plugin directory before
+# the Qt 6 one in QT_PLUGIN_PATH. A Qt 6 app that asks for the qt5ct name
+# gets no theme. Only the Qt 6 plugin answers to qt6ct, so that is the name
+# used. No Qt 5 app is installed.
 {
   config,
   pkgs,
@@ -98,6 +114,17 @@ let
     [Interface]
     stylesheets=${sheet}
   '';
+  # Kirigami apps ignore the Qt palette and the style
+  # sheet. They read their colours from the KDE colour scheme in kdeglobals
+  # instead. They keep their own rounded cards, since only widget apps get
+  # the style sheet. The selection is in reverse video, as in the rest of
+  # the rice.
+  #
+  # Outside Plasma, KDE apps replace the Qt palette with Breeze Light unless
+  # kdeglobals names a colour scheme, and they tint their toolbar icons with
+  # that palette. The icons then come out dark grey on the dark surface. The
+  # same groups go into a scheme file that kdeglobals selects, so the icons
+  # take the rice's white.
   kdeGroups =
     let
       rgb = role: builtins.replaceStrings [ ";" ] [ "," ] palette.rgb.${role};

@@ -43,6 +43,7 @@
           force_default_wallpaper = 0;
         };
         cursor = {
+          # Use the Xcursor format supplied by the cursor theme.
           enable_hyprcursor = false;
         };
         dwindle.preserve_split = true;

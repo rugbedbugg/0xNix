@@ -119,7 +119,6 @@ let
     done
   '';
 
-
   # The screen brightness, read from the backlight device. The script checks
   # twice a second and prints only when the level changed. Scrolling changes
   # it by 1%, the step waybar's own backlight module used.
@@ -317,68 +316,76 @@ let
   '';
 
   bottomBarConfig = pkgs.writeText "waybar-bottom-config.json" (
-    builtins.toJSON {
-      name = "waybar-bottom";
-      layer = "top";
-      position = "bottom";
-      height = geometry.bottomBar;
-      modules-left = [ "hyprland/window" ];
-      modules-center = [ "custom/music" ];
-      modules-right = [
-        "custom/temp"
-        "custom/brightness"
-        "custom/bluetooth"
-        "power-profiles-daemon"
-        "custom/notification"
-      ];
-      # Short enough that the window title, the track and the readings all
-      # fit across 1920 px without pushing the track off the middle.
-      "hyprland/window" = {
-        format = "{class}: {title}";
-        max-length = 60;
-        separate-outputs = true;
-      };
-      "custom/music" = {
-        exec = "${musicStatus}";
-        return-type = "json";
-        on-click = "${rmpc} togglepause";
-      };
-      "custom/temp" = {
-        exec = "${tempStatus}";
-        return-type = "json";
-      };
-      "custom/brightness" = {
-        exec = "${brightnessStatus}";
-        return-type = "json";
-        on-scroll-up = "${brightnessctl} set 1%+";
-        on-scroll-down = "${brightnessctl} --min-value=1 set 1%-";
-      };
-      "custom/bluetooth" = {
-        exec = "${bluetoothStatus}";
-        return-type = "json";
-        max-length = 26;
-        on-click = "${toggleBluetooth}";
-      };
-      # A click cycles through the profiles, which is the module's own
-      # behaviour.
-      power-profiles-daemon = {
-        format = "Mode {icon}";
-        format-icons = {
-          performance = "Perf";
-          balanced = "Bal";
-          power-saver = "Save";
-          default = "?";
+    builtins.toJSON (
+      {
+        name = "waybar-bottom";
+        layer = "top";
+        position = "bottom";
+        height = geometry.bottomBar;
+        modules-left = [
+          "hyprland/window"
+        ];
+        modules-center = [ "custom/music" ];
+        modules-right = [
+          "custom/temp"
+          "custom/brightness"
+          "custom/bluetooth"
+        ]
+        ++ config.desktop.bottomBar.modulesRight
+        ++ [
+          "power-profiles-daemon"
+          "custom/notification"
+        ];
+        # Short enough that the window title, the track and the readings all
+        # fit across 1920 px without pushing the track off the middle.
+        "hyprland/window" = {
+          format = "{class}: {title}";
+          max-length = 60;
+          separate-outputs = true;
         };
-        tooltip = false;
-      };
-      "custom/notification" = {
-        exec = "${notificationStatus}";
-        return-type = "json";
-        on-click = "${swaync} --toggle-panel --skip-wait";
-        on-click-right = "${swaync} --close-all --skip-wait";
-        on-click-middle = "${swaync} --toggle-dnd --skip-wait";
-      };
-    }
+        "custom/music" = {
+          exec = "${musicStatus}";
+          return-type = "json";
+          on-click = "${rmpc} togglepause";
+        };
+        "custom/temp" = {
+          exec = "${tempStatus}";
+          return-type = "json";
+        };
+        "custom/brightness" = {
+          exec = "${brightnessStatus}";
+          return-type = "json";
+          on-scroll-up = "${brightnessctl} set 1%+";
+          on-scroll-down = "${brightnessctl} --min-value=1 set 1%-";
+        };
+        "custom/bluetooth" = {
+          exec = "${bluetoothStatus}";
+          return-type = "json";
+          max-length = 26;
+          on-click = "${toggleBluetooth}";
+        };
+        # A click cycles through the profiles, which is the module's own
+        # behaviour.
+        power-profiles-daemon = {
+          format = "Mode {icon}";
+          format-icons = {
+            performance = "Perf";
+            balanced = "Bal";
+            power-saver = "Save";
+            default = "?";
+          };
+          tooltip = false;
+        };
+        "custom/notification" = {
+          exec = "${notificationStatus}";
+          return-type = "json";
+          on-click = "${swaync} --toggle-panel --skip-wait";
+          on-click-right = "${swaync} --close-all --skip-wait";
+          on-click-middle = "${swaync} --toggle-dnd --skip-wait";
+        };
+      }
+      // config.desktop.bottomBar.modules
+    )
   );
 
   bottomBarStyle = pkgs.writeText "waybar-bottom-style.css" ''
@@ -399,6 +406,7 @@ let
        readings and the notification button. */
     #custom-notification { border-left: 2px solid ${palette.border}; }
     ${tooltipStyle}
+    ${config.desktop.bottomBar.style}
   '';
 in
 {

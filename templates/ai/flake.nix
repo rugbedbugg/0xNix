@@ -11,6 +11,9 @@
     in
     {
       devShells.${system}.default = pkgs.mkShell {
+        # Keep the desktop graphics stack separate from GPU compute
+        # support. Project-specific Python dependencies can instead be locked
+        # with uv.
         packages =
           (with pkgs; [
             pkg-config

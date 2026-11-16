@@ -1,3 +1,7 @@
+# Desktop session pieces apart from the bars (waybar.nix and
+# waybar-side-bars.nix): the clipboard, screenshot and font packages, the GTK 4
+# tty theme file, foot, fuzzel, the polkit agent and
+# the charger watcher. Notifications live in swaync.nix.
 {
   osConfig,
   pkgs,

@@ -1,0 +1,36 @@
+# The check job evaluates every flake output and checks formatting. Building
+# the example closure is too heavy for a hosted runner, so it stops at evaluation.
+# It also
+# builds the python-scripts check, which compiles and lints the Python files.
+#
+# The desktop-config job builds the one check that runs the desktop tools:
+# the Lua parse, the Waybar JSON and Hyprland's own config verification. Its
+# inputs are about 5 GiB unpacked and come from the public cache. The qt-theme
+# check needs the whole system closure and stays local.
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+      - name: Check formatting
+        run: nix fmt -- --check $(git ls-files '*.nix')
+      - name: Evaluate the flake
+        run: nix flake check --no-build
+      - name: Check the Python scripts
+        run: nix build --no-link .#checks.x86_64-linux.python-scripts
+
+  desktop-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+      - name: Build the desktop config check
+        run: nix build --no-link .#checks.x86_64-linux.desktop-config

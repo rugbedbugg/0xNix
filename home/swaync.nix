@@ -88,6 +88,7 @@ in
       # Red is reserved for things that need action, so critical
       # notifications stay until they are closed.
       timeout-critical = 0;
+      # Show each notification without an extra group header.
       notification-grouping = false;
       # mako showed no buttons. These filters drop the extra action buttons,
       # the copy button for codes and the reply field. The pattern skips the

@@ -94,6 +94,8 @@ in
     ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$pref")"
     printf '%s\n' "$choice" > "$pref"
 
+    # Use CPU encoding for small regions that hardware encoders may reject.
+    # Keep dimensions even for libx264.
     encoder="H.264, GPU"
     if [ "$1" = region ]; then
       geometry=$(${pkgs.slurp}/bin/slurp) || exit 0
@@ -133,6 +135,9 @@ in
     ${pkgs.coreutils}/bin/mkdir -p "$dir" "$run"
     file="$dir/$(${pkgs.coreutils}/bin/date +%F_%H-%M-%S).mp4"
 
+    # Avoid requesting an optional hardware encoding mode.
+    # The recorder closes the lock's descriptor, or it would hold the lock
+    # for the whole recording.
     ${pkgs.wl-screenrec}/bin/wl-screenrec --low-power=off "$@" -f "$file" 9>&- &
     recorder=$!
     started=1

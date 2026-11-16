@@ -1,4 +1,4 @@
-{ config, 
+{
   pkgs,
   pkgs-unstable,
   palette,
@@ -34,6 +34,7 @@
   ];
 
   home = {
+    # Match the terminal theme with the classic black-and-white cursor.
     pointerCursor = {
       enable = true;
       package = pkgs.vanilla-dmz;
@@ -91,7 +92,7 @@
         augroup c_kernel_style
           autocmd!
           autocmd FileType c,cpp setlocal noexpandtab tabstop=8 shiftwidth=8 softtabstop=8
-          autocmd FileType c,cpp setlocal cindent cinoptions=:0,l1,t0g0,(0 
+          autocmd FileType c,cpp setlocal cindent cinoptions=:0,l1,t0g0,(0
           autocmd FileType c,cpp setlocal textwidth=80 colorcolumn=81
         augroup END
 
