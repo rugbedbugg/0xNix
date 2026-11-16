@@ -7,7 +7,7 @@ let
   # uwsm-app asks uwsm's resident app daemon for the launch command, which
   # takes ~30ms. `uwsm app` starts a Python process for every launch and
   # takes ~125ms.
-  app = cmd: "${pkgs.uwsm}/bin/uwsm-app -- ${cmd}";
+  app = cmd: "${pkgs.uwsm}/bin/uwsm-app -- ${pkgs.runtimeShell} -c ${pkgs.lib.escapeShellArg cmd}";
 
   # A toggle for the special workspace that holds one app's window. The
   # first press launches the app. Later presses show or hide the workspace.
@@ -26,16 +26,16 @@ let
       hyprctl=${pkgs.hyprland}/bin/hyprctl
       jq=${pkgs.jq}/bin/jq
       window() {
-        $hyprctl clients -j | $jq -r --arg c "${class}" 'first(.[] | select(.class == $c) | .address) // empty'
+        $hyprctl clients -j | $jq -r --arg c ${pkgs.lib.escapeShellArg class} 'first(.[] | select(.class == $c) | .address) // empty'
       }
       shown() {
-        [ "$($hyprctl monitors -j | $jq -r '.[] | select(.focused) | .specialWorkspace.name')" = "special:${workspace}" ]
+        [ "$($hyprctl monitors -j | $jq -r '.[] | select(.focused) | .specialWorkspace.name')" = ${pkgs.lib.escapeShellArg "special:${workspace}"} ]
       }
 
       if [ -z "$(window)" ]; then
         ( ${launchCmd} ) &
       fi
-      $hyprctl dispatch 'hl.dsp.workspace.toggle_special("${workspace}")' >/dev/null
+      $hyprctl dispatch ${pkgs.lib.escapeShellArg "hl.dsp.workspace.toggle_special(${pkgs.lib.generators.toLua { } workspace})"} >/dev/null
       shown || exit 0
 
       for _ in $(${pkgs.coreutils}/bin/seq 100); do
