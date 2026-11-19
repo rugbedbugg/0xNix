@@ -8,8 +8,15 @@
     fsType = "ext4";
   };
   boot.loader.grub.enable = false;
-  nixpkgs.config.allowUnfree = true;
   system.stateVersion = "26.05";
+  programs.hyprland = {
+    enable = true;
+    withUWSM = true;
+  };
+  services.pipewire = {
+    enable = true;
+    pulse.enable = true;
+  };
 
   users.users.example.isNormalUser = true;
   home-manager = {

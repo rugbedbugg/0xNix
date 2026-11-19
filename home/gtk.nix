@@ -90,6 +90,20 @@ in
     gtk4.extraCss = named + "\n" + variables;
   };
 
+  # Use an outline VGA font for applications that ask for system-ui.
+  xdg.configFile."fontconfig/conf.d/60-system-ui.conf".text = ''
+    <?xml version="1.0"?>
+    <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+    <fontconfig>
+      <match target="pattern">
+        <test name="family" qual="any"><string>system-ui</string></test>
+        <edit name="family" mode="prepend" binding="strong">
+          <string>BigBlueTermPlus Nerd Font</string>
+        </edit>
+      </match>
+    </fontconfig>
+  '';
+
   # The rice has no animations. libadwaita apps, swaync among them, read
   # this key through the desktop portal and skip their slides and fades.
   # Its own transition setting and settings.ini do not stop them.

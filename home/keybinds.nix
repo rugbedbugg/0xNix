@@ -2,7 +2,6 @@
   config,
   lib,
   pkgs,
-  pkgs-unstable,
   palette,
   ...
 }:
@@ -15,8 +14,6 @@ let
     mkSpecialToggle
     toggleVolume
     ;
-  # Where home.packages binaries land, for the apps that apps.nix installs.
-  profileBin = "${config.home.profileDirectory}/bin";
   swaync = "${config.services.swaync.package}/bin/swaync-client";
   media = "${pkgs.playerctl}/bin/playerctl";
 
@@ -203,140 +200,160 @@ let
     ${app "${sessionMenu}"}
   '';
 
-  # Special-workspace toggle: if a window with the given
-  # class already exists, just toggle the special workspace's visibility;
-  # otherwise launch the app first (the matching window_rule below silently
-  # assigns it into that special workspace as soon as it opens) and then
-  # toggle. `hyprctl dispatch` on this lua-configured Hyprland build only
-  # accepts Lua-expression syntax, not the classic "dispatcher args" form
-  # — confirmed live ("dispatch in lua is a shorthand for hl.dispatch(...),
-  # your syntax might need to be updated"); `hl.dsp.workspace.toggle_special`
-  # is the confirmed-working call. The label bar above the window is driven
-  # entirely by Hyprland's own IPC events (waybar-side-bars.nix), not by this
-  # script — so it stays correct however the workspace gets hidden.
-  #
-  # Whenever this shows the workspace, the app's window also gets keyboard
-  # foot's --app-id sets the Wayland app-id Hyprland reports as `class` —
-  # confirmed live — so a TUI app running inside foot can still be matched
-  # by its own distinct class instead of foot's generic one.
-  footAs = appId: cmd: "${pkgs.foot}/bin/foot --app-id=${appId} ${cmd}";
-
-  toggleMusic = mkSpecialToggle {
-    class = "rmpc-special";
-    workspace = "music";
-    launchCmd = app (footAs "rmpc-special" "${pkgs-unstable.rmpc}/bin/rmpc");
-  };
-
-  toggleBtop = mkSpecialToggle {
-    class = "btop-special";
-    workspace = "btop";
-    # Force UTF-8 rendering when the environment does not advertise it.
-    launchCmd = app (footAs "btop-special" "${pkgs-unstable.btop}/bin/btop --force-utf");
-  };
-
-  # A plain floating terminal, with the same treatment as music/btop.
-  toggleGeneral = mkSpecialToggle {
-    class = "general-special";
-    workspace = "general";
-    launchCmd = app (footAs "general-special" "");
-  };
-
-  # File manager overlay: lf (files.nix) in foot. Quitting lf closes the
-  # window, so the next SUPER + E starts a fresh one.
-  toggleFiles = mkSpecialToggle {
-    class = "lf-special";
-    workspace = "files";
-    launchCmd = app (footAs "lf-special" "${config.programs.lf.package}/bin/lf");
-  };
-
-  # Discord via Vesktop, from apps.nix. Its Wayland app-id is "vesktop",
-  # confirmed live. Gets the same floating overlay as the terminals below.
-  toggleDiscord = mkSpecialToggle {
-    class = "vesktop";
-    workspace = "discord";
-    launchCmd = app "${profileBin}/vesktop";
-  };
-
-  # WhatsApp via ZapFast, also from apps.nix. Its Wayland app-id is
-  # "zapfast", confirmed live with `hyprctl clients` when the keyring screen
-  # was up. Closing its window leaves the app in the system tray with no
-  # window of its own, so the toggle's "is it running" check finds nothing
-  # and launches it again. That second launch only asks the running instance
-  # to show its window, and the wait below still catches it once it maps.
-  toggleWhatsApp = mkSpecialToggle {
-    class = "zapfast";
-    workspace = "whatsapp";
-    launchCmd = app "${profileBin}/zapfast";
-  };
-
-  # YouTube via youtube-tui in foot, from apps.nix. Videos it opens
-  # play in mpv, which youtube-tui starts with MPV_HOME pointing here instead
-  # of ~/.config/mpv. It gets the same theme (mpv-theme.nix), since the
-  # config directory is not shared. The player window then reports its own
-  # app-id, and the window rules below float it over the list. mpv started anywhere else
-  # keeps the plain "mpv" app-id.
-  mpvTheme = import ./mpv-theme.nix { inherit palette; };
-  youtubeMpv = pkgs.symlinkJoin {
-    name = "youtube-mpv";
-    paths = [
-      (pkgs.writeTextDir "mpv.conf" (
-        mpvTheme.config
-        + ''
-          wayland-app-id=youtube-player
-        ''
-      ))
-      (pkgs.writeTextDir "script-opts/osc.conf" mpvTheme.osc)
-    ];
-  };
-
-  toggleYouTube = mkSpecialToggle {
-    class = "youtube-special";
-    workspace = "youtube";
-    launchCmd = app (
-      footAs "youtube-special" "${pkgs.coreutils}/bin/env MPV_HOME=${youtubeMpv} ${profileBin}/youtube-tui"
+  # Encode configurable strings as Lua values. Compare bindings in one
+  # modifier order before generating the launchers and workspace rules.
+  lua = lib.generators.toLua { };
+  canonicalKey =
+    key:
+    let
+      parts = lib.splitString " + " (lib.toUpper key);
+      modifiers = lib.init parts;
+    in
+    lib.concatStringsSep " + " (
+      lib.filter (modifier: lib.elem modifier modifiers) [
+        "CTRL"
+        "SUPER"
+        "ALT"
+        "SHIFT"
+      ]
+      ++ [ (lib.last parts) ]
     );
-  };
-  # Apps that tile. Super + key opens one into the layout. Super + Alt + key
-  # opens it floating (floating.nix): the first window of a matching class
-  # that opens within a few seconds floats as a golden rectangle in
-  # floating.lua. A pattern is a Lua pattern on the window class, and
-  # LibreOffice opens each component under its own class.
-  launches = [
+  reservedKeys = [
+    "SUPER + Q"
+    "SUPER + V"
+    "SUPER + F"
+    "SUPER + SHIFT + E"
+    "SUPER + SUPER_L"
+    "SUPER + slash"
+    "CTRL + ALT + Delete"
+    "SUPER + N"
+    "CTRL + ALT + C"
+    "SUPER + L"
+    "Print"
+    "SUPER + R"
+    "SUPER + SHIFT + R"
+    "SUPER + SHIFT + S"
+    "CTRL + ALT + V"
+    "CTRL + SUPER + SHIFT + R"
+    "CTRL + SUPER + SHIFT + L"
+    "SUPER + SHIFT + W"
+    "SUPER + SHIFT + T"
+    "XF86AudioPlay"
+    "XF86AudioNext"
+    "XF86AudioPrev"
+    "XF86AudioStop"
+    "XF86AudioRaiseVolume"
+    "XF86AudioLowerVolume"
+    "XF86AudioMute"
+    "XF86AudioMicMute"
+    "XF86MonBrightnessUp"
+    "XF86MonBrightnessDown"
+    "SUPER + equal"
+    "SUPER + minus"
+    "SUPER + SHIFT + equal"
+    "SUPER + SHIFT + minus"
+    "SUPER + mouse:272"
+    "SUPER + mouse:273"
+  ]
+  ++
+    lib.concatMap
+      (direction: [
+        "SUPER + ${direction}"
+        "SUPER + SHIFT + ${direction}"
+      ])
+      [
+        "left"
+        "right"
+        "up"
+        "down"
+      ]
+  ++ lib.concatMap (number: [
+    "SUPER + ${toString number}"
+    "SUPER + ALT + ${toString number}"
+  ]) (lib.range 0 9);
+  launches = config.desktop.launches;
+  overlays = config.desktop.overlays;
+  overlayWindows = config.desktop.overlayWindows ++ [
     {
-      key = "T";
-      description = "Terminal";
-      command = app "${pkgs.foot}/bin/foot";
-      classes = [ "^foot$" ];
+      class = "org.pulseaudio.pavucontrol";
+      workspace = "volume";
+      silent = true;
     }
     {
-      key = "B";
-      description = "Browser";
-      command = app "${profileBin}/microsoft-edge-stable";
-      classes = [ "^microsoft%-edge$" ];
-    }
-    {
-      key = "C";
-      description = "Editor (nvim)";
-      command = app "${pkgs.foot}/bin/foot ${config.programs.neovim.finalPackage}/bin/nvim";
-      classes = [ "^foot$" ];
-    }
-    {
-      key = "O";
-      description = "Office (LibreOffice)";
-      command = app "${pkgs.libreoffice-fresh}/bin/libreoffice";
-      classes = [ "^libreoffice" ];
+      class = "com.gabm.satty";
+      workspace = null;
+      silent = false;
     }
   ];
-  luaList = items: "{ " + lib.concatMapStringsSep ", " (item: ''"${item}"'') items + " }";
-  launchBinds = lib.concatMapStringsSep "\n" (launch: ''
-    hl.bind("SUPER + ${launch.key}", hl.dsp.exec_cmd("${launch.command}"), { description = "${launch.description}" })
-    hl.bind("SUPER + ALT + ${launch.key}", function() floating.launch(${luaList launch.classes}, "${launch.command}") end, { description = "${launch.description}, floating" })
-  '') launches;
+  overlayClasses = map (item: item.class) (overlays ++ overlayWindows);
+  workspaceRules = lib.concatMapStringsSep "\n" (
+    item:
+    lib.optionalString (item.workspace != null) ''
+      hl.window_rule(${
+        lua {
+          name = "${item.class}-ws";
+          match.class = "^${lib.escapeRegex item.class}$";
+          workspace = "special:${item.workspace}${lib.optionalString (item.silent or true) " silent"}";
+        }
+      })
+    ''
+  ) (overlays ++ overlayWindows);
+  launchBinds = lib.concatMapStringsSep "\n" (
+    launch:
+    let
+      command = lua (app launch.command);
+    in
+    ''
+      hl.bind(${lua "SUPER + ${launch.key}"}, hl.dsp.exec_cmd(${command}), { description = ${lua launch.description} })
+      hl.bind(${lua "SUPER + ALT + ${launch.key}"}, function() floating.launch(${lua launch.classes}, ${command}) end, { description = ${lua "${launch.description}, floating"} })
+    ''
+  ) launches;
+  overlayBinds = lib.concatMapStringsSep "\n" (
+    overlay:
+    let
+      toggle = mkSpecialToggle {
+        inherit (overlay) class workspace;
+        launchCmd = app overlay.command;
+      };
+    in
+    ''
+      hl.bind(${lua overlay.key}, hl.dsp.exec_cmd(${lua (toString toggle)}), { description = ${lua overlay.description} })
+    ''
+  ) overlays;
 in
 {
   # Desktop binds on top of hyprland.nix's core set, using the plain desktop
   # tools (fuzzel, mako, waybar, grim/slurp).
   config = {
+    assertions = [
+      {
+        assertion = lib.length overlayClasses == lib.length (lib.unique overlayClasses);
+        message = "Overlay window classes must be unique.";
+      }
+      {
+        assertion =
+          let
+            names = map (item: item.workspace) overlays ++ [ "volume" ];
+          in
+          lib.length names == lib.length (lib.unique names);
+        message = "Toggle workspace names must be unique.";
+      }
+      {
+        assertion =
+          let
+            keys =
+              lib.concatMap (item: [
+                "SUPER + ${item.key}"
+                "SUPER + ALT + ${item.key}"
+              ]) launches
+              ++ map (item: item.key) overlays
+              ++ reservedKeys;
+            normalized = map canonicalKey keys;
+          in
+          lib.length normalized == lib.length (lib.unique normalized);
+        message = "Application bindings must be unique and must not replace reserved desktop shortcuts.";
+      }
+    ];
     home.packages = [ pkgs.playerctl ];
 
     # Enter saves and closes, Ctrl+C copies and Ctrl+S saves. Neither runs
@@ -388,17 +405,7 @@ in
       -- Special-workspace window assignment: whenever these apps open (via
       -- their dedicated toggle keybinds below), they land silently in their
       -- own special workspace instead of the tiling layout.
-      hl.window_rule({ name = "rmpc-special-ws", match = { class = "^rmpc-special$" }, workspace = "special:music silent" })
-      hl.window_rule({ name = "btop-special-ws", match = { class = "^btop-special$" }, workspace = "special:btop silent" })
-      hl.window_rule({ name = "general-special-ws", match = { class = "^general-special$" }, workspace = "special:general silent" })
-      hl.window_rule({ name = "lf-special-ws", match = { class = "^lf-special$" }, workspace = "special:files silent" })
-      hl.window_rule({ name = "discord-special-ws", match = { class = "^vesktop$" }, workspace = "special:discord silent" })
-      hl.window_rule({ name = "zapfast-special-ws", match = { class = "^zapfast$" }, workspace = "special:whatsapp silent" })
-      hl.window_rule({ name = "youtube-special-ws", match = { class = "^youtube-special$" }, workspace = "special:youtube silent" })
-      -- Not silent: the list is on screen when it starts a video, so the
-      -- player takes focus there.
-      hl.window_rule({ name = "youtube-player-ws", match = { class = "^youtube-player$" }, workspace = "special:youtube" })
-      hl.window_rule({ name = "volume-special-ws", match = { class = "^org\\.pulseaudio\\.pavucontrol$" }, workspace = "special:volume silent" })
+      ${workspaceRules}
 
       -- A new window opens on the focused workspace, which is the special
       -- one while an overlay is up. A foot from Super + T or a link opened
@@ -407,9 +414,8 @@ in
       -- focus. The overlay closes by itself when the workspace changes. The
       -- toggle only runs if it is somehow still up, since toggling a closed
       -- one would open it again. Floating windows stay put. Every overlay
-      -- app floats through the rules below, and so do the lf file chooser
-      -- and the youtube-tui player, which have to open over the overlay
-      -- they came from. The window's floating state and workspace are
+      -- app floats through the rules below. Companion overlay windows
+      -- receive the same treatment. The floating state and workspace are
       -- already set when the event fires (confirmed live).
       hl.on("window.open", function(w)
         if w.floating or not w.workspace or not w.workspace.special then return end
@@ -425,12 +431,12 @@ in
       end)
 
       -- Floating, centered, fuzzel-styled overlays for every special
-      -- workspace, Vesktop and ZapFast included. Size and position come from
+      -- workspace. Size and position come from
       -- overlay-geometry.nix, which also places the special-workspace
-      -- label bar in waybar-side-bars.nix. The lf file chooser (files.nix)
+      -- label bar in waybar-side-bars.nix. Unassigned companions
       -- and the satty screenshot editor get the same frame but open on
       -- whatever workspace is in front.
-      local overlay_classes = {"rmpc-special", "btop-special", "general-special", "lf-special", "vesktop", "zapfast", "youtube-special", "youtube-player", "org.pulseaudio.pavucontrol", "filechooser", "com.gabm.satty"}
+      local overlay_classes = ${lua overlayClasses}
       for _, cls in ipairs(overlay_classes) do
         hl.window_rule({
           name = "float-style-" .. cls,
@@ -481,13 +487,7 @@ in
       hl.bind("CTRL + ALT + V", hl.dsp.exec_cmd("${toggleVolume}"), { description = "Volume mixer" })
 
       -- Special workspaces (toggle visibility, launch on first use).
-      hl.bind("SUPER + M", hl.dsp.exec_cmd("${toggleMusic}"), { description = "Music (rmpc)" })
-      hl.bind("SUPER + D", hl.dsp.exec_cmd("${toggleDiscord}"), { description = "Discord (Vesktop)" })
-      hl.bind("SUPER + W", hl.dsp.exec_cmd("${toggleWhatsApp}"), { description = "WhatsApp (ZapFast)" })
-      hl.bind("SUPER + Y", hl.dsp.exec_cmd("${toggleYouTube}"), { description = "YouTube (youtube-tui)" })
-      hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd("${toggleBtop}"), { description = "System monitor (btop)" })
-      hl.bind("SUPER + S", hl.dsp.exec_cmd("${toggleGeneral}"), { description = "Scratch terminal" })
-      hl.bind("SUPER + E", hl.dsp.exec_cmd("${toggleFiles}"), { description = "Files (lf)" })
+      ${overlayBinds}
 
       -- The bar is the only shell piece here, so it gets a restart shortcut of
       -- its own rather than riding on the session menu.

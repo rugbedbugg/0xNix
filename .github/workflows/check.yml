@@ -1,12 +1,9 @@
-# The check job evaluates every flake output and checks formatting. Building
-# the example closure is too heavy for a hosted runner, so it stops at evaluation.
-# It also
-# builds the python-scripts check, which compiles and lints the Python files.
+# Evaluate the rice fixtures and check formatting. Compile and lint the
+# Python desktop scripts.
 #
 # The desktop-config job builds the one check that runs the desktop tools:
 # the Lua parse, the Waybar JSON and Hyprland's own config verification. Its
-# inputs are about 5 GiB unpacked and come from the public cache. The qt-theme
-# check needs the whole system closure and stays local.
+# inputs come from the public cache. Build the full theme fixtures locally.
 name: Check
 
 on:

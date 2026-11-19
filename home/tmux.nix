@@ -4,42 +4,36 @@
 # border rule, and the current window reads in reverse video like selected
 # items elsewhere.
 {
+  config,
+  lib,
   palette,
   ...
 }:
 {
-  programs.tmux = {
-    enable = true;
-    # Windows and panes count from 1, so the numbers line up with the keys
-    # above them on the keyboard.
-    baseIndex = 1;
-    # Pass Escape straight through instead of waiting to see if it starts a
-    # key sequence, so Vim leaves insert mode without a delay.
-    escapeTime = 0;
-    mouse = true;
-    keyMode = "vi";
-    historyLimit = 50000;
-    terminal = "tmux-256color";
-    extraConfig = ''
-      # foot draws in true colour, so pass 24-bit colour through instead of
-      # mapping the palette's hex values to the nearest 256.
-      set -ga terminal-features "*:RGB"
+  config = lib.mkIf config.programs.tmux.enable {
+    programs.tmux = {
+      terminal = "tmux-256color";
+      extraConfig = ''
+        # foot draws in true colour, so pass 24-bit colour through instead of
+        # mapping the palette's hex values to the nearest 256.
+        set -ga terminal-features "*:RGB"
 
-      set -g status-style "bg=${palette.surface},fg=${palette.textMuted}"
-      set -g status-left "#[fg=${palette.nix},bold] #S #[default] "
-      set -g status-left-length 30
-      set -g status-right "#[fg=${palette.textMuted}]%Y-%m-%d %H:%M "
+        set -g status-style "bg=${palette.surface},fg=${palette.textMuted}"
+        set -g status-left "#[fg=${palette.nix},bold] #S #[default] "
+        set -g status-left-length 30
+        set -g status-right "#[fg=${palette.textMuted}]%Y-%m-%d %H:%M "
 
-      setw -g window-status-current-style "bg=${palette.text},fg=${palette.surface}"
-      setw -g window-status-style "fg=${palette.textMuted}"
-      setw -g window-status-format " #I:#W "
-      setw -g window-status-current-format " #I:#W "
+        setw -g window-status-current-style "bg=${palette.text},fg=${palette.surface}"
+        setw -g window-status-style "fg=${palette.textMuted}"
+        setw -g window-status-format " #I:#W "
+        setw -g window-status-current-format " #I:#W "
 
-      set -g pane-border-style "fg=${palette.outlineVariant}"
-      set -g pane-active-border-style "fg=${palette.border}"
+        set -g pane-border-style "fg=${palette.outlineVariant}"
+        set -g pane-active-border-style "fg=${palette.border}"
 
-      set -g message-style "bg=${palette.surfaceContainerHigh},fg=${palette.text}"
-      set -g mode-style "bg=${palette.text},fg=${palette.surface}"
-    '';
+        set -g message-style "bg=${palette.surfaceContainerHigh},fg=${palette.text}"
+        set -g mode-style "bg=${palette.text},fg=${palette.surface}"
+      '';
+    };
   };
 }

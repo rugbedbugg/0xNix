@@ -1,6 +1,6 @@
 # The bottom bar: a second waybar process that reserves the screen's bottom
-# edge. It shows the focused window on the left, the track mpd is playing in
-# the middle, a few system readings on the right and the notification center
+# edge. It shows the focused window on the left, optional modules in the
+# middle, a few system readings on the right and the notification center
 # button in the corner. Its height comes from
 # overlay-geometry.nix, which the floating windows, the special-workspace
 # overlays and the minimap also read to stay clear of it. It is its own
@@ -19,68 +19,10 @@ let
   tooltipStyle = import ./tooltip-style.nix { inherit palette; };
   inherit (scripts) barHelpers statPath;
 
-  rmpc = "${config.programs.rmpc.package}/bin/rmpc";
   bluetoothctl = "${pkgs.bluez}/bin/bluetoothctl";
   brightnessctl = "${pkgs.brightnessctl}/bin/brightnessctl";
   swaync = "${config.services.swaync.package}/bin/swaync-client";
   busctl = "${pkgs.systemd}/bin/busctl";
-
-  # The track mpd is playing. The script asks rmpc, the same client as the
-  # music overlay, and keeps running when mpd is down or restarts. The note
-  # in front shows the state: blue while playing, yellow while paused. Long
-  # artists and titles are cut short with a ~ so the bar's middle keeps its
-  # place.
-  musicStatus = pkgs.writeShellScript "waybar-music" ''
-    export PATH=${statPath}
-    ${barHelpers}
-
-    clock() {
-      awk -v s="$1" 'BEGIN { printf "%d:%02d", s / 60, s % 60 }'
-    }
-
-    # jq counts characters, so a cut never splits one in two. It also
-    # escapes the text, since the bar reads the line as markup.
-    shorten() {
-      jq -rn --arg s "$1" --argjson n "$2" \
-        '$s | (if length > $n then .[:$n - 1] + "~" else . end) | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")'
-    }
-
-    while :; do
-      if status=$(${rmpc} status 2>/dev/null) && [ -n "$status" ]; then
-        state=$(printf '%s' "$status" | jq -r '.state // ""')
-        song=$(${rmpc} song 2>/dev/null)
-        artist=$(printf '%s' "$song" | jq -r '.metadata.artist // empty' 2>/dev/null)
-        title=$(printf '%s' "$song" | jq -r '.metadata.title // .file // empty' 2>/dev/null)
-        album=$(printf '%s' "$song" | jq -r '.metadata.album // empty' 2>/dev/null)
-        if [ -z "$title" ] || [ "$state" = Stop ]; then
-          emit "Music stopped" "$(row State Stopped)" off
-        else
-          case "$state" in
-            Play) word=Playing class=play note=${palette.nix} ;;
-            *) word=Paused class=pause note=${palette.disk} ;;
-          esac
-          elapsed=$(printf '%s' "$status" | jq -r '.elapsed.secs // 0')
-          length=$(printf '%s' "$status" | jq -r '.duration.secs // 0')
-          label=$(shorten "$title" 32)
-          [ -n "$artist" ] && label="$(shorten "$artist" 20) - $label"
-          text="<span color='$note'>♪</span> $label  <span color='${palette.textMuted}'>$(clock "$elapsed")/$(clock "$length")</span>"
-          tooltip=$(
-            row State "$word"
-            row Title "$title"
-            [ -n "$artist" ] && row Artist "$artist"
-            [ -n "$album" ] && row Album "$album"
-            row Time "$(clock "$elapsed") / $(clock "$length")"
-            row Volume "$(printf '%s' "$status" | jq -r '.volume')%"
-          )
-          jq -cn --arg text "$text" --arg tooltip "$tooltip" --arg class "$class" \
-            '{text: $text, tooltip: ($tooltip | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;")), class: $class}'
-        fi
-      else
-        emit "Music off" "$(row State "mpd is not running")" off
-      fi
-      sleep 2
-    done
-  '';
 
   # The CPU temperature. The hwmon index changes between boots, so the
   # script finds the sensors by name. The tooltip lists the others too.
@@ -325,7 +267,7 @@ let
         modules-left = [
           "hyprland/window"
         ];
-        modules-center = [ "custom/music" ];
+        modules-center = config.desktop.bottomBar.modulesCenter;
         modules-right = [
           "custom/temp"
           "custom/brightness"
@@ -342,11 +284,6 @@ let
           format = "{class}: {title}";
           max-length = 60;
           separate-outputs = true;
-        };
-        "custom/music" = {
-          exec = "${musicStatus}";
-          return-type = "json";
-          on-click = "${rmpc} togglepause";
         };
         "custom/temp" = {
           exec = "${tempStatus}";

@@ -1,53 +1,17 @@
+{ lib, ... }:
 {
   programs.fish = {
     enable = true;
-    interactiveShellInit = ''
+    interactiveShellInit = lib.mkBefore ''
       set -g fish_greeting
-      bind \ch backward-kill-word
-      # An empty DIRENV_LOG_FORMAT turns off direnv's loading, export and
-      # nix-direnv status lines. Errors still print. direnv.toml cannot do
-      # this, since it ignores an empty log_format.
-      set -gx DIRENV_LOG_FORMAT ""
     '';
-    shellAbbrs = {
-      ll = "ls -lah";
-      gs = "git status";
-    };
+    functions.starship_transient_prompt_func = "starship module character $argv";
   };
-  programs.direnv = {
-    enable = true;
-    nix-direnv.enable = true;
-    enableFishIntegration = true;
-    # Nix draws its download progress on a line it never ends. direnv's
-    # slow-command warning prints at the end of that line and ignores
-    # log_format. The warning fires after 5s by default, which a first-time
-    # devshell download often passes. Two minutes leaves it for real hangs.
-    config.global.warn_timeout = "2m";
-  };
-  # starship.toml: ◎ prompt, directory and git branch/status on the right,
-  # git line counts above when they're nonzero. No Nerd Font icons — only
-  # plain Unicode shapes, which the VGA font covers except a few rarely
-  # shown ones (the nix-shell marks ✶ ⌽ ⌾, git's deleted ✕, the username ⭘,
-  # and two language labels), and those fall back to another font.
-  #
-  # Nothing in the scrollback may be a full-width line: foot re-wraps those
-  # onto two rows whenever the window narrows (tiling a new window beside
-  # it), pushing all earlier output down. So:
-  # - Transient prompt: once a command runs, its prompt is redrawn as just
-  #   "◎ command", dropping the right-side text and the git line-count row.
-  # - The line-count row is left-aligned. Padded out to the right edge (as
-  #   upstream does with $fill), the terminal marks that row as running on
-  #   into the next, and the mark outlives the transient redraw as a blank
-  #   row after every past command once re-wrapped.
-  # The live prompt is fish's own to redraw on resize.
+  # A transient prompt keeps completed commands short when foot reflows.
   programs.starship = {
     enable = true;
     enableFishIntegration = true;
     enableTransience = true;
     settings = builtins.fromTOML (builtins.readFile ./starship.toml);
   };
-  # The default replacement is a green ❯; keep the prompt's own ◎ (or the
-  # failed-command ○) instead. No right-side replacement: it stays empty.
-  # Starship passes the last status etc. as arguments; forward them.
-  programs.fish.functions.starship_transient_prompt_func = "starship module character $argv";
 }
