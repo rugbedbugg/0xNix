@@ -29,6 +29,7 @@
     ./zathura.nix
     ./zapfast.nix
     ./nvim.nix
+    ./leetcode.nix
     ./legacy-launcher.nix
     ./tmux.nix
   ];
